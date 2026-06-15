@@ -1,0 +1,10 @@
+# Ignore python virtual environments
+backend/venv/
+__pycache__/
+*.pyc
+
+# Ignore environment configurations and secrets
+backend/.env
+
+# Ignore local database storage data from Docker
+pgdata/

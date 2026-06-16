@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext'
 import Landing from './pages/Landing'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
+import Pricing from './pages/Pricing'
 
 const ComingSoon = ({ name }) => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: '1rem' }}>
@@ -23,7 +24,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
-      <Route path="/pricing" element={<ComingSoon name="Pricing Page" />} />
+      <Route path="/pricing" element={<Pricing />} />
       <Route path="/docs" element={<ComingSoon name="Docs Page" />} />
       <Route path="/settings" element={<ProtectedRoute><ComingSoon name="Settings Page" /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

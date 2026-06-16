@@ -1,10 +1,12 @@
-# Ignore python virtual environments
+# Python
 backend/venv/
-__pycache__/
-*.pyc
-
-# Ignore environment configurations and secrets
+backend/__pycache__/
+backend/*.pyc
 backend/.env
 
-# Ignore local database storage data from Docker
-pgdata/
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Docker
+*.log

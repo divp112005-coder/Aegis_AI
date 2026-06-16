@@ -1,0 +1,115 @@
+.alert-table-wrapper {
+  background: rgba(30, 41, 54, 0.6);
+  border: 1px solid #3a4556;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.alert-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.alert-table thead {
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid #00d9ff;
+}
+
+.alert-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #00d9ff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.8rem;
+}
+
+.alert-table tbody tr {
+  border-bottom: 1px solid #2a3340;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.alert-table tbody tr:hover {
+  background: rgba(0, 217, 255, 0.05);
+}
+
+.alert-table tbody tr.selected {
+  background: rgba(0, 217, 255, 0.1);
+  border-left: 3px solid #00d9ff;
+}
+
+.alert-table td {
+  padding: 1rem;
+  vertical-align: middle;
+}
+
+.alert-table td.time {
+  color: #9ca3af;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.85rem;
+}
+
+.alert-table td.type {
+  font-weight: 500;
+  color: #e0e6ed;
+  text-transform: capitalize;
+}
+
+.alert-table td.ip {
+  font-family: 'Monaco', 'Menlo', monospace;
+  color: #00d9ff;
+  font-size: 0.9rem;
+}
+
+.alert-table td.user {
+  color: #9ca3af;
+}
+
+.alert-table td.severity {
+  text-align: center;
+}
+
+.badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-weight: 600;
+  color: white;
+  text-transform: capitalize;
+  font-size: 0.8rem;
+}
+
+.status-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.status-badge.status-open {
+  background: rgba(255, 71, 87, 0.2);
+  color: #ff4757;
+  border: 1px solid #ff4757;
+}
+
+.status-badge.status-approved {
+  background: rgba(46, 213, 115, 0.2);
+  color: #2ed573;
+  border: 1px solid #2ed573;
+}
+
+.status-badge.status-dismissed {
+  background: rgba(108, 117, 125, 0.2);
+  color: #9ca3af;
+  border: 1px solid #6c757d;
+}
+
+.no-data {
+  text-align: center;
+  color: #6c757d;
+  padding: 3rem 1rem !important;
+}

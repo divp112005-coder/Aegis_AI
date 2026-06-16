@@ -1,11 +1,11 @@
 import './AlertTable.css';
 
 const SEVERITY_COLORS = {
-  critical: '#ff4757',
-  high: '#ff6348',
-  medium: '#ffa502',
-  low: '#2ed573',
-  unknown: '#6c757d',
+  critical: '#B84060',
+  high:     '#C4613A',
+  medium:   '#A07830',
+  low:      '#4A9E7E',
+  unknown:  '#9B7A8C',
 };
 
 export default function AlertTable({ alerts, onSelectAlert, selectedId }) {

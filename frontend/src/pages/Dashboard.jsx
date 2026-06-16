@@ -6,19 +6,19 @@ import './Dashboard.css';
 const API_BASE = 'http://127.0.0.1:8000';
 
 const SEVERITY_COLORS = {
-  critical: '#ff4757',
-  high:     '#ff6348',
-  medium:   '#fbbf24',
-  low:      '#22d3a5',
-  unknown:  '#64748b',
+  critical: '#B84060',
+  high:     '#C4613A',
+  medium:   '#A07830',
+  low:      '#4A9E7E',
+  unknown:  '#9B7A8C',
 };
 
 const SEVERITY_BG = {
-  critical: 'rgba(255,71,87,0.15)',
-  high:     'rgba(255,99,72,0.15)',
-  medium:   'rgba(251,191,36,0.15)',
-  low:      'rgba(34,211,165,0.15)',
-  unknown:  'rgba(100,116,139,0.15)',
+  critical: 'rgba(184,64,96,0.12)',
+  high:     'rgba(196,97,58,0.12)',
+  medium:   'rgba(160,120,48,0.12)',
+  low:      'rgba(74,158,126,0.12)',
+  unknown:  'rgba(155,122,140,0.10)',
 };
 
 function SeverityBadge({ severity }) {
@@ -323,19 +323,19 @@ export default function Dashboard() {
         {/* Stats row */}
         <div className="stats-row">
           <div className="stat-pill glass">
-            <span className="stat-num" style={{ color: '#ff4757' }}>{criticalCount}</span>
+            <span className="stat-num" style={{ color: '#B84060' }}>{criticalCount}</span>
             <span className="stat-lbl">Critical</span>
           </div>
           <div className="stat-pill glass">
-            <span className="stat-num" style={{ color: '#ff6348' }}>{highCount}</span>
+            <span className="stat-num" style={{ color: '#C4613A' }}>{highCount}</span>
             <span className="stat-lbl">High</span>
           </div>
           <div className="stat-pill glass">
-            <span className="stat-num" style={{ color: '#fbbf24' }}>{openCount}</span>
+            <span className="stat-num" style={{ color: '#A07830' }}>{openCount}</span>
             <span className="stat-lbl">Open</span>
           </div>
           <div className="stat-pill glass">
-            <span className="stat-num" style={{ color: '#22d3a5' }}>{alerts.length}</span>
+            <span className="stat-num" style={{ color: '#4A9E7E' }}>{alerts.length}</span>
             <span className="stat-lbl">Total</span>
           </div>
         </div>

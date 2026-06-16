@@ -20,7 +20,7 @@
   transition: color 0.2s;
   z-index: 10;
 }
-.auth-back:hover { color: var(--cyan); }
+.auth-back:hover { color: var(--rose); }
 
 .auth-container {
   display: flex;
@@ -30,7 +30,7 @@
   z-index: 1;
 }
 
-/* ── Left branding panel ─────────────────────────────────────────────── */
+/* Left branding panel */
 .auth-brand {
   flex: 1;
   padding: 2.5rem;
@@ -42,8 +42,8 @@
 
 .brand-logo {
   font-size: 3rem;
-  color: var(--cyan);
-  filter: drop-shadow(0 0 16px var(--cyan));
+  color: var(--rose);
+  filter: drop-shadow(0 0 14px rgba(201,79,120,0.45));
   line-height: 1;
 }
 
@@ -52,6 +52,7 @@
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.5px;
+  color: var(--text);
 }
 
 .auth-brand p {
@@ -100,7 +101,7 @@
   color: var(--text-muted);
 }
 
-/* ── Right form panel ────────────────────────────────────────────────── */
+/* Right form panel */
 .auth-form-panel {
   flex: 0 0 400px;
   padding: 2.5rem;
@@ -111,7 +112,7 @@
 
 .auth-toggle {
   display: flex;
-  background: rgba(0,0,0,0.3);
+  background: rgba(201,79,120,0.06);
   border-radius: 8px;
   padding: 3px;
   gap: 3px;
@@ -132,8 +133,8 @@
 }
 
 .auth-toggle button.active {
-  background: rgba(0,217,255,0.12);
-  color: var(--cyan);
+  background: rgba(201,79,120,0.12);
+  color: var(--rose);
   border: 1px solid var(--border-glow);
 }
 
@@ -141,6 +142,7 @@
   font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: -0.3px;
+  color: var(--text);
 }
 
 .form-sub {
@@ -174,8 +176,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: rgba(255,71,87,0.1);
-  border: 1px solid rgba(255,71,87,0.3);
+  background: rgba(184,64,96,0.08);
+  border: 1px solid rgba(184,64,96,0.25);
   border-radius: 8px;
   color: var(--red);
   font-size: 0.85rem;
@@ -198,7 +200,7 @@
 .auth-switch button {
   background: none;
   border: none;
-  color: var(--cyan);
+  color: var(--rose);
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;

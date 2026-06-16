@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Landing from './pages/Landing'
 import Auth from './pages/Auth'
+import Dashboard from './pages/Dashboard'
 
 const ComingSoon = ({ name }) => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: '1rem' }}>
@@ -25,7 +26,7 @@ export default function App() {
       <Route path="/pricing" element={<ComingSoon name="Pricing Page" />} />
       <Route path="/docs" element={<ComingSoon name="Docs Page" />} />
       <Route path="/settings" element={<ProtectedRoute><ComingSoon name="Settings Page" /></ProtectedRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><ComingSoon name="Dashboard" /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

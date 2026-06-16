@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, ForeignKey, Float
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, ForeignKey, Float, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,6 +11,19 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://aegis:aegis_pass@localhos
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    full_name = Column(String, nullable=True)
+    plan = Column(String, default="free")  # free / pro / enterprise
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
 
 
 class Log(Base):

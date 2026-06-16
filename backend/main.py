@@ -7,8 +7,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from models import SessionLocal, Log, Alert, AnalystReport, init_db
+from auth import router as auth_router
 
 app = FastAPI(title="Aegis AI", version="0.1.0")
+
+app.include_router(auth_router)
 
 # Allow the React frontend (running on a different port) to call this API
 app.add_middleware(

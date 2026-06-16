@@ -4,5 +4,8 @@ sqlalchemy
 psycopg2-binary
 pydantic
 apscheduler
-google-generativeai
+openai  # used for Groq's OpenAI-compatible API
 python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

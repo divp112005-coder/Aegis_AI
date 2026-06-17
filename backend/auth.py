@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
@@ -38,12 +38,18 @@ def get_db():
         db.close()
 
 
+def _safe_password(password: str) -> str:
+    """Truncate to 72 bytes (bcrypt hard limit) to prevent ValueError."""
+    encoded = password.encode("utf-8")
+    return encoded[:72].decode("utf-8", errors="ignore")
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password[:72])
+    return pwd_context.hash(_safe_password(password))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain[:72], hashed)
+    return pwd_context.verify(_safe_password(plain), hashed)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -79,6 +85,15 @@ class RegisterRequest(BaseModel):
     username: str
     password: str
     full_name: Optional[str] = None
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Password must be 72 characters or fewer")
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        return v
 
 
 class LoginResponse(BaseModel):

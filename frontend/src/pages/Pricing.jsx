@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
 import './Pricing.css';
 
 const TIERS = [
@@ -197,9 +198,105 @@ function CheckoutModal({ tier, onClose }) {
   );
 }
 
+/* ── Contact Sales Modal ─────────────────────────────────────────── */
+function ContactSalesModal({ onClose }) {
+  const { user } = useAuth();
+  const [form, setForm] = useState({
+    name: user?.full_name || user?.username || '',
+    email: user?.email || '',
+    message: '',
+  });
+  const [status, setStatus] = useState(''); // '' | 'sending' | 'sent' | 'error'
+
+  const handleSend = (e) => {
+    e.preventDefault();
+    if (!form.message.trim()) return;
+    setStatus('sending');
+    // Simulate sending (no backend endpoint for sales enquiries)
+    setTimeout(() => setStatus('sent'), 1600);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-box glass-strong" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+
+        {status === 'sent' ? (
+          <div className="modal-state">
+            <div className="success-icon">✓</div>
+            <h2>Message <span className="gradient-text">Sent!</span></h2>
+            <p className="modal-sub">Our sales team will reach out within 24 hours. Thanks for reaching out!</p>
+            <button className="btn btn-primary checkout-btn" onClick={onClose}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div className="modal-header">
+              <span className="modal-icon">💬</span>
+              <h2>Talk to <span className="gradient-text">Sales</span></h2>
+              <p className="modal-sub">Tell us about your needs and we'll get back to you within 24 hours.</p>
+            </div>
+
+            <form className="checkout-form" onSubmit={handleSend} noValidate>
+              <div className="field-group">
+                <label>Name</label>
+                <input
+                  className="input"
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Your name"
+                  required
+                />
+              </div>
+
+              <div className="field-group">
+                <label>Email</label>
+                <input
+                  className="input"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="your@email.com"
+                  required
+                />
+              </div>
+
+              <div className="field-group">
+                <label>Your Message / Issue</label>
+                <textarea
+                  className="input sales-textarea"
+                  rows={5}
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  placeholder="Describe your use case, team size, or any questions you have…"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary checkout-btn"
+                disabled={status === 'sending' || !form.message.trim()}
+              >
+                {status === 'sending' ? (
+                  <><span className="btn-spinner" /> Sending…</>
+                ) : (
+                  'Send Message →'
+                )}
+              </button>
+              <p className="modal-fine-print">We typically respond within 24 hours · No spam, ever</p>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Pricing page ────────────────────────────────────────────────── */
 export default function Pricing() {
-  const [activeTier, setActiveTier] = useState(null); // tier object for modal
+  const [activeTier, setActiveTier] = useState(null); // tier object for checkout modal
+  const [salesOpen, setSalesOpen] = useState(false);  // contact sales modal
 
   return (
     <>
@@ -262,6 +359,13 @@ export default function Pricing() {
                   >
                     {tier.cta}
                   </Link>
+                ) : tier.id === 'enterprise' ? (
+                  <button
+                    className={`btn btn-ghost tier-btn`}
+                    onClick={() => setSalesOpen(true)}
+                  >
+                    {tier.cta}
+                  </button>
                 ) : (
                   <button
                     className={`btn ${tier.highlighted ? 'btn-primary' : 'btn-ghost'} tier-btn`}
@@ -286,7 +390,7 @@ export default function Pricing() {
               Enterprise plans can be tailored to your team's exact log volume, compliance requirements, and SLA. Reach out and we'll scope it together.
             </span>
           </div>
-          <button className="btn btn-outline" onClick={() => setActiveTier(TIERS[2])}>
+          <button className="btn btn-outline" onClick={() => setSalesOpen(true)}>
             Talk to Sales
           </button>
         </div>
@@ -306,9 +410,13 @@ export default function Pricing() {
         </div>
       </footer>
 
-      {/* Modal */}
+      {/* Checkout Modal */}
       {activeTier && (
         <CheckoutModal tier={activeTier} onClose={() => setActiveTier(null)} />
+      )}
+      {/* Contact Sales Modal */}
+      {salesOpen && (
+        <ContactSalesModal onClose={() => setSalesOpen(false)} />
       )}
       </div>
     </>

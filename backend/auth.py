@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from models import SessionLocal, User
+from models import SessionLocal, User, Alert, Log, AnalystReport
 
 load_dotenv()
 
@@ -102,6 +102,11 @@ class LoginResponse(BaseModel):
     user: dict
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 @router.post("/register", status_code=201)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
@@ -166,3 +171,45 @@ def get_me(current_user: User = Depends(get_current_user)):
         "plan": current_user.plan,
         "created_at": current_user.created_at.isoformat(),
     }
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    current_user.hashed_password = hash_password(body.new_password)
+    db.commit()
+    return {"detail": "Password updated successfully"}
+
+
+@router.delete("/me", status_code=200)
+def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete the authenticated user and all their associated data."""
+    # Delete analyst reports linked to alerts owned by this user (by username)
+    alert_ids = db.query(Alert.id).filter(Alert.username == current_user.username).all()
+    alert_id_list = [a.id for a in alert_ids]
+    if alert_id_list:
+        db.query(AnalystReport).filter(AnalystReport.alert_id.in_(alert_id_list)).delete(
+            synchronize_session=False
+        )
+    # Delete alerts
+    db.query(Alert).filter(Alert.username == current_user.username).delete(
+        synchronize_session=False
+    )
+    # Delete logs attributed to this username
+    db.query(Log).filter(Log.username == current_user.username).delete(
+        synchronize_session=False
+    )
+    # Delete the user record itself
+    db.delete(current_user)
+    db.commit()
+    return {"detail": "Account deleted successfully"}

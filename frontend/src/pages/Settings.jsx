@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import './Settings.css';
@@ -54,7 +55,8 @@ function SectionCard({ icon, title, children }) {
 
 /* ── Settings page ───────────────────────────────────────────────── */
 export default function Settings() {
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
+  const navigate = useNavigate();
 
   /* ── Password change state ── */
   const [pwForm, setPwForm] = useState({
@@ -65,6 +67,10 @@ export default function Settings() {
   const [pwErrors, setPwErrors] = useState({});
   const [pwStatus, setPwStatus] = useState(''); // '' | 'loading' | 'success' | 'error'
   const [pwMsg, setPwMsg] = useState('');
+
+  /* ── Delete account state ── */
+  const [deleteStep, setDeleteStep] = useState('idle'); // 'idle' | 'confirm' | 'deleting' | 'error'
+  const [deleteError, setDeleteError] = useState('');
 
   /* ── API key state ── */
   const MOCK_KEY = 'aegis_sk_live_4xB9mZpQrT8sKjL2vYnW6cDhE0oFuIa3';
@@ -111,6 +117,30 @@ export default function Settings() {
     } catch (err) {
       setPwStatus('error');
       setPwMsg(err.message);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteStep === 'idle') {
+      setDeleteStep('confirm');
+      return;
+    }
+    setDeleteStep('deleting');
+    setDeleteError('');
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Account deletion failed');
+      }
+      logout();
+      navigate('/');
+    } catch (err) {
+      setDeleteError(err.message);
+      setDeleteStep('error');
     }
   };
 
@@ -295,16 +325,40 @@ export default function Settings() {
                 <strong>Delete Account</strong>
                 <p>All your alerts, logs, and settings will be erased forever.</p>
               </div>
-              <Tooltip text="To delete your account, please contact support@aegis.ai">
-                <button
-                  className="btn btn-danger"
-                  id="delete-account-btn"
-                  disabled
-                  aria-disabled="true"
-                >
-                  🗑 Delete Account
-                </button>
-              </Tooltip>
+              <div className="delete-btn-group">
+                {deleteStep === 'confirm' && (
+                  <p className="delete-confirm-msg">
+                    ⚠️ Are you sure? This cannot be undone.
+                  </p>
+                )}
+                {deleteStep === 'error' && (
+                  <p className="delete-error-msg">⚠ {deleteError}</p>
+                )}
+                <div className="delete-btn-row">
+                  {deleteStep === 'confirm' && (
+                    <button
+                      className="btn btn-ghost btn-cancel-delete"
+                      onClick={() => setDeleteStep('idle')}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    className={`btn btn-danger-active${deleteStep === 'confirm' ? ' btn-danger-confirm' : ''}`}
+                    id="delete-account-btn"
+                    onClick={handleDeleteAccount}
+                    disabled={deleteStep === 'deleting'}
+                  >
+                    {deleteStep === 'deleting' ? (
+                      <><span className="btn-spinner" style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} /> Deleting…</>
+                    ) : deleteStep === 'confirm' ? (
+                      '🗑 Yes, Delete My Account'
+                    ) : (
+                      '🗑 Delete Account'
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </SectionCard>
 

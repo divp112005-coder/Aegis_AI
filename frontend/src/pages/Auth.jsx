@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Navbar from '../components/Navbar';
 import './Auth.css';
 
 const API_BASE = 'http://127.0.0.1:8000';
@@ -65,15 +66,11 @@ export default function Auth() {
   };
 
   return (
-    <div className="auth-page page">
-      <div className="orb orb-cyan" />
-      <div className="orb orb-purple" />
-
-      {/* Back to home */}
-      <Link to="/" className="auth-back">
-        <span>←</span> Aegis AI
-      </Link>
-
+    <>
+      <div className="orb orb-cyan" style={{ position: 'fixed' }} />
+      <div className="orb orb-purple" style={{ position: 'fixed' }} />
+      <Navbar />
+      <div className="auth-page page">
       <div className="auth-container">
         {/* Left panel — branding */}
         <div className="auth-brand glass">
@@ -224,6 +221,7 @@ export default function Auth() {
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

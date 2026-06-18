@@ -3,24 +3,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 5rem 2rem 2rem;
 }
-
-.auth-back {
-  position: fixed;
-  top: 1.5rem;
-  left: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: color 0.2s;
-  z-index: 10;
-}
-.auth-back:hover { color: var(--rose); }
 
 .auth-container {
   display: flex;

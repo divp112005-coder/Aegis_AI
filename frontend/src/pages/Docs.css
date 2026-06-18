@@ -1,6 +1,7 @@
 /* ── Docs page layout ─────────────────────────────────────────────── */
 .docs-page {
   min-height: 100vh;
+  padding-top: 80px;
 }
 
 .docs-layout {
@@ -17,13 +18,13 @@
   width: 240px;
   flex-shrink: 0;
   position: sticky;
-  top: 24px;
+  top: 96px;
   padding: 1.5rem 1rem;
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: calc(100vh - 48px);
+  max-height: calc(100vh - 116px);
   overflow-y: auto;
 }
 

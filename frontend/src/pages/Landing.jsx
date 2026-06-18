@@ -20,11 +20,12 @@ const STATS = [
 
 export default function Landing() {
   return (
-    <div className="page landing">
-      <div className="orb orb-cyan" />
-      <div className="orb orb-purple" />
-      <div className="orb orb-pink" />
+    <>
+      <div className="orb orb-cyan" style={{ position: 'fixed' }} />
+      <div className="orb orb-purple" style={{ position: 'fixed' }} />
+      <div className="orb orb-pink" style={{ position: 'fixed' }} />
       <Navbar />
+      <div className="page landing">
 
       {/* Hero */}
       <section className="hero">
@@ -114,6 +115,7 @@ export default function Landing() {
           <a href="https://github.com/divp112005-coder/Aegis_AI" target="_blank" rel="noreferrer">GitHub</a>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }

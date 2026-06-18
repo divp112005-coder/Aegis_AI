@@ -1,9 +1,11 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import './Navbar.css';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { dark, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,6 +32,19 @@ export default function Navbar() {
       </div>
 
       <div className="nav-actions">
+        {/* Dark mode toggle */}
+        <button
+          className="theme-toggle"
+          onClick={toggle}
+          aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={dark ? 'Light mode' : 'Dark mode'}
+        >
+          <span className="theme-toggle-track">
+            <span className="theme-toggle-thumb" />
+          </span>
+          <span className="theme-toggle-icon">{dark ? '☀️' : '🌙'}</span>
+        </button>
+
         {user ? (
           <>
             <span className="nav-user">

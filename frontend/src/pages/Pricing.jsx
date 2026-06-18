@@ -202,10 +202,11 @@ export default function Pricing() {
   const [activeTier, setActiveTier] = useState(null); // tier object for modal
 
   return (
-    <div className="page pricing-page">
-      <div className="orb orb-cyan" />
-      <div className="orb orb-purple" />
+    <>
+      <div className="orb orb-cyan" style={{ position: 'fixed' }} />
+      <div className="orb orb-purple" style={{ position: 'fixed' }} />
       <Navbar />
+      <div className="page pricing-page">
 
       <section className="pricing-hero">
         <div className="pricing-badge glass">
@@ -309,6 +310,7 @@ export default function Pricing() {
       {activeTier && (
         <CheckoutModal tier={activeTier} onClose={() => setActiveTier(null)} />
       )}
-    </div>
+      </div>
+    </>
   );
 }

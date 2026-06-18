@@ -39,6 +39,31 @@
   --pink:        var(--blush);
 }
 
+/* -- Dark pink theme tokens ----------------------------------------------- */
+[data-theme="dark"] {
+  --rose:        #E8608A;
+  --rose-dim:    #C94F78;
+  --rose-light:  #F2B8C8;
+  --lavender:    #A98ADB;
+  --lavender-dim:#8B6EBE;
+  --blush:       #D878A0;
+  --coral:       #E8607E;
+  --green:       #5BBFA0;
+  --red:         #E05080;
+  --amber:       #D09060;
+
+  --bg:          #110A10;
+  --bg-2:        #1C0F18;
+  --surface:     rgba(35,14,28,0.80);
+  --surface-2:   rgba(45,18,36,0.92);
+  --border:      rgba(220,80,130,0.18);
+  --border-glow: rgba(220,80,130,0.42);
+
+  --text:        #F5DDE8;
+  --text-muted:  #B07898;
+  --text-dim:    #D4A8BF;
+}
+
 /* -- Base ----------------------------------------------------------------- */
 html { scroll-behavior: smooth; }
 
@@ -49,6 +74,7 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.35s ease, color 0.35s ease;
 }
 
 /* -- Dot-grid background -------------------------------------------------- */
@@ -60,6 +86,10 @@ body::before {
   background-size: 38px 38px;
   pointer-events: none;
   z-index: 0;
+}
+
+[data-theme="dark"] body::before {
+  background-image: radial-gradient(circle, rgba(220,80,130,0.14) 1px, transparent 1px);
 }
 
 /* -- Soft radial colour washes -------------------------------------------- */
@@ -74,6 +104,12 @@ body::after {
   z-index: 0;
 }
 
+[data-theme="dark"] body::after {
+  background:
+    radial-gradient(ellipse 80% 55% at 10% 0%,   rgba(200,60,110,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 100%,  rgba(100,60,160,0.18) 0%, transparent 60%);
+}
+
 /* -- Liquid glass utility classes ----------------------------------------- */
 .glass {
   background: rgba(255,255,255,0.68);
@@ -82,6 +118,13 @@ body::after {
   border: 1px solid rgba(201,79,120,0.15);
   border-radius: var(--radius);
   box-shadow: 0 2px 20px rgba(201,79,120,0.06), inset 0 1px 0 rgba(255,255,255,0.92);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+[data-theme="dark"] .glass {
+  background: rgba(30,12,22,0.75);
+  border-color: rgba(220,80,130,0.18);
+  box-shadow: 0 2px 20px rgba(220,80,130,0.10), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .glass-strong {
@@ -91,6 +134,13 @@ body::after {
   border: 1px solid rgba(201,79,120,0.20);
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 40px rgba(201,79,120,0.09), inset 0 1px 0 #fff;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+[data-theme="dark"] .glass-strong {
+  background: rgba(28,10,20,0.88);
+  border-color: rgba(220,80,130,0.24);
+  box-shadow: 0 8px 40px rgba(220,80,130,0.14), inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
 .glass-glow {
@@ -100,6 +150,11 @@ body::after {
   border: 1px solid var(--border-glow);
   border-radius: var(--radius);
   box-shadow: 0 0 28px rgba(201,79,120,0.08), inset 0 1px 0 rgba(255,255,255,0.88);
+}
+
+[data-theme="dark"] .glass-glow {
+  background: rgba(40,10,28,0.72);
+  box-shadow: 0 0 28px rgba(220,80,130,0.14), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 /* -- Glow orbs ------------------------------------------------------------ */
@@ -114,6 +169,10 @@ body::after {
 .orb-cyan   { background: #F5AABF; width: 600px; height: 600px; top: -200px; left: -100px; }
 .orb-purple { background: #C8B4E8; width: 500px; height: 500px; bottom: -150px; right: -100px; }
 .orb-pink   { background: #FFD6E4; width: 300px; height: 300px; top: 40%; left: 60%; }
+
+[data-theme="dark"] .orb-cyan   { background: #9B2058; opacity: 0.32; }
+[data-theme="dark"] .orb-purple { background: #5E2A90; opacity: 0.25; }
+[data-theme="dark"] .orb-pink   { background: #8B1848; opacity: 0.22; }
 
 /* -- Typography ----------------------------------------------------------- */
 .gradient-text {
@@ -161,6 +220,17 @@ body::after {
   color: var(--rose);
 }
 
+[data-theme="dark"] .btn-ghost {
+  background: rgba(45,18,36,0.70);
+  color: var(--text);
+  border-color: rgba(220,80,130,0.22);
+}
+[data-theme="dark"] .btn-ghost:hover {
+  background: rgba(60,22,45,0.90);
+  border-color: var(--border-glow);
+  color: var(--rose-light);
+}
+
 .btn-outline {
   background: transparent;
   color: var(--rose);
@@ -169,6 +239,15 @@ body::after {
 .btn-outline:hover {
   background: rgba(201,79,120,0.07);
   box-shadow: 0 0 16px rgba(201,79,120,0.14);
+}
+
+[data-theme="dark"] .btn-outline {
+  color: var(--rose-light);
+  border-color: rgba(220,80,130,0.38);
+}
+[data-theme="dark"] .btn-outline:hover {
+  background: rgba(220,80,130,0.12);
+  box-shadow: 0 0 18px rgba(220,80,130,0.22);
 }
 
 /* -- Form inputs ---------------------------------------------------------- */
@@ -191,11 +270,25 @@ body::after {
 }
 .input::placeholder { color: var(--text-muted); }
 
+[data-theme="dark"] .input {
+  background: rgba(30,10,22,0.80);
+  border-color: rgba(220,80,130,0.22);
+  color: var(--text);
+}
+[data-theme="dark"] .input:focus {
+  background: rgba(40,14,30,0.95);
+  border-color: var(--rose);
+  box-shadow: 0 0 0 3px rgba(220,80,130,0.18);
+}
+
 /* -- Scrollbar ------------------------------------------------------------ */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-2); }
 ::-webkit-scrollbar-thumb { background: rgba(201,79,120,0.22); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(201,79,120,0.42); }
 
+[data-theme="dark"] ::-webkit-scrollbar-track { background: #1A0A14; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(220,80,130,0.32); }
+
 /* -- Page wrapper --------------------------------------------------------- */
-.page { position: relative; z-index: 1; min-height: 100vh; }
+.page { position: relative; min-height: 100vh; }

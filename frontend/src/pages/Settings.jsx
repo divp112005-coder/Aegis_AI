@@ -117,10 +117,11 @@ export default function Settings() {
   const maskedKey = MOCK_KEY.slice(0, 12) + '•'.repeat(20) + MOCK_KEY.slice(-6);
 
   return (
-    <div className="page settings-page">
-      <div className="orb orb-cyan" />
-      <div className="orb orb-purple" />
+    <>
+      <div className="orb orb-cyan" style={{ position: 'fixed' }} />
+      <div className="orb orb-purple" style={{ position: 'fixed' }} />
       <Navbar />
+      <div className="page settings-page">
 
       <div className="settings-content">
         {/* Page heading */}
@@ -309,6 +310,7 @@ export default function Settings() {
 
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

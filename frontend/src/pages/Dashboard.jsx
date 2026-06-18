@@ -300,10 +300,11 @@ export default function Dashboard() {
   const highCount     = alerts.filter((a) => a.severity?.toLowerCase() === 'high').length;
 
   return (
-    <div className="page dashboard-page">
-      <div className="orb orb-cyan" />
-      <div className="orb orb-purple" />
+    <>
+      <div className="orb orb-cyan" style={{ position: 'fixed' }} />
+      <div className="orb orb-purple" style={{ position: 'fixed' }} />
       <Navbar />
+      <div className="page dashboard-page">
 
       <div className="dashboard-content">
         {/* Header */}
@@ -432,6 +433,7 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

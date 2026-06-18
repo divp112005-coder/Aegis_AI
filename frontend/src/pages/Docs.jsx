@@ -193,10 +193,11 @@ export default function Docs() {
   };
 
   return (
-    <div className="page docs-page">
-      <div className="orb orb-cyan" />
-      <div className="orb orb-purple" />
+    <>
+      <div className="orb orb-cyan" style={{ position: 'fixed' }} />
+      <div className="orb orb-purple" style={{ position: 'fixed' }} />
       <Navbar />
+      <div className="page docs-page">
 
       <div className="docs-layout">
         {/* ── Left Sidebar ─────────────────────────────────── */}
@@ -601,6 +602,7 @@ rules:
           </footer>
         </main>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

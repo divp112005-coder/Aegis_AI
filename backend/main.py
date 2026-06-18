@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from models import SessionLocal, Log, Alert, AnalystReport, init_db
-from auth import router as auth_router
+from models import SessionLocal, Log, Alert, AnalystReport, User, init_db
+from auth import router as auth_router, get_current_user
 
 app = FastAPI(title="Aegis AI", version="0.1.0")
 
@@ -47,6 +47,7 @@ def get_logs(
     source_ip: Optional[str] = None,
     event_type: Optional[str] = None,
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     query = db.query(Log)
     if source_ip:
@@ -71,6 +72,7 @@ def get_logs(
 def get_alerts(
     status_filter: Optional[str] = Query(None, alias="status"),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     query = db.query(Alert)
     if status_filter:
@@ -92,7 +94,11 @@ def get_alerts(
 
 
 @app.get("/alerts/{alert_id}")
-def get_alert_detail(alert_id: int, db: Session = Depends(get_db)):
+def get_alert_detail(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -140,7 +146,11 @@ def get_alert_detail(alert_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/alerts/{alert_id}/analyze")
-def trigger_analysis(alert_id: int, db: Session = Depends(get_db)):
+def trigger_analysis(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -163,7 +173,12 @@ def trigger_analysis(alert_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/alerts/{alert_id}/status")
-def update_alert_status(alert_id: int, new_status: str, db: Session = Depends(get_db)):
+def update_alert_status(
+    alert_id: int,
+    new_status: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     if new_status not in ("open", "approved", "dismissed"):
         raise HTTPException(status_code=400, detail="Invalid status")
     alert = db.query(Alert).filter(Alert.id == alert_id).first()

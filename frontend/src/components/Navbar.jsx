@@ -58,10 +58,11 @@ export default function Navbar() {
           aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
           title={dark ? 'Light mode' : 'Dark mode'}
         >
+          <span className="theme-toggle-icon">☀️</span>
           <span className="theme-toggle-track">
             <span className="theme-toggle-thumb" />
           </span>
-          <span className="theme-toggle-icon">{dark ? '☀️' : '🌙'}</span>
+          <span className="theme-toggle-icon">🌙</span>
         </button>
 
         {user ? (

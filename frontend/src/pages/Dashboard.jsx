@@ -324,8 +324,9 @@ export default function Dashboard() {
             onClick={toggle}
             aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
           >
+            <span className="theme-toggle-icon">☀️</span>
             <span className="theme-toggle-track"><span className="theme-toggle-thumb" /></span>
-            <span className="theme-toggle-icon">{dark ? '☀️' : '🌙'}</span>
+            <span className="theme-toggle-icon">🌙</span>
           </button>
           {user && (
             <span className="dash-topbar-user">

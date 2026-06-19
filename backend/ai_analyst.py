@@ -30,13 +30,36 @@ with exactly these fields:
 {
   "summary": "2-4 sentence plain-English summary of what happened",
   "severity": "low | medium | high | critical",
-  "mitre_technique": "MITRE ATT&CK technique ID and name, e.g. 'T1110 - Brute Force'",
+  "mitre_technique": "MITRE ATT&CK technique ID and name",
   "recommended_action": "1-3 sentence specific recommended action for the analyst"
 }
 
-Base your severity on factors like: number of attempts, whether the target account is privileged \
-(e.g. admin), whether the source IP geolocation looks suspicious (foreign country vs internal office), \
-and whether any login_success appears alongside the failures (which would indicate a possible compromise)."""
+The alert will have one of these alert_type values — use the matching guidance for severity \
+and MITRE mapping:
+
+- "brute_force": Many failed logins from one source. Map to T1110 - Brute Force. Severity scales \
+  with attempt count, whether the target account is privileged (e.g. admin, svc_backup), and whether \
+  the source IP geolocation is foreign vs internal office. A login_success mixed in with failures \
+  suggests a possible compromise and should raise severity to high/critical.
+
+- "geo_anomaly": A successful login from a country/location this user has never used before. Map to \
+  T1078 - Valid Accounts (or T1586 if credential reuse seems likely). Severity depends on how far the \
+  new location is from the user's normal pattern and whether the account is privileged.
+
+- "off_hours_login": A successful login at an unusual hour (e.g. 1-4 AM). Map to T1078 - Valid Accounts. \
+  Generally lower severity (low/medium) unless combined with other risk factors like a privileged \
+  account or unfamiliar IP, since off-hours access alone can have innocent explanations.
+
+- "privilege_escalation": A privilege_change event occurring shortly after a login_success for the same \
+  user. Map to T1078.003 or T1098 - Account Manipulation. This is a high-signal pattern — severity should \
+  generally be high or critical, especially if the source IP is external/foreign.
+
+- "impossible_travel": The same user has login_success events from two geographically distant locations \
+  within a short time window (physically impossible to travel between in that time). Map to T1078 - Valid \
+  Accounts. Strongly suggests credential compromise or session/token theft — severity should generally be \
+  high or critical.
+
+Always ground your reasoning in the specific details and related logs provided rather than generic advice."""
 
 
 def build_prompt(alert: Alert, related_logs: list[Log]) -> str:
@@ -78,13 +101,21 @@ def analyze_alert(alert_id: int):
             print(f"[AI ANALYST] Alert {alert_id} already has a report. Skipping.")
             return
 
-        related_logs = (
-            session.query(Log)
-            .filter(Log.source_ip == alert.source_ip)
-            .order_by(Log.timestamp.desc())
-            .limit(20)
-            .all()
-        )
+        # Scope related logs to this alert's owner (critical for tenant isolation)
+        # and choose the most relevant lookup key per alert type — IP-based attacks
+        # are best explained by other activity from that IP, while account-centric
+        # patterns (geo anomaly, off-hours, privilege escalation, impossible travel)
+        # are best explained by that user's recent activity across IPs.
+        log_query = session.query(Log).filter(Log.owner_id == alert.owner_id)
+
+        if alert.alert_type == "brute_force":
+            log_query = log_query.filter(Log.source_ip == alert.source_ip)
+        elif alert.username:
+            log_query = log_query.filter(Log.username == alert.username)
+        else:
+            log_query = log_query.filter(Log.source_ip == alert.source_ip)
+
+        related_logs = log_query.order_by(Log.timestamp.desc()).limit(20).all()
 
         prompt = build_prompt(alert, related_logs)
 

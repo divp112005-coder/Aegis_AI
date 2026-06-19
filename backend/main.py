@@ -125,13 +125,16 @@ def get_alert_detail(
         }
 
     # Pull related logs for context (same source_ip, same owner)
-    related_logs = (
-        db.query(Log)
-        .filter(Log.source_ip == alert.source_ip, Log.owner_id == current_user.id)
-        .order_by(desc(Log.timestamp))
-        .limit(20)
-        .all()
-    )
+    # Pull related logs for context. IP-centric alerts (brute_force) show activity
+    # from that IP; account-centric alerts (geo_anomaly, off_hours_login,
+    # privilege_escalation, impossible_travel) show that user's recent activity instead.
+    log_query = db.query(Log).filter(Log.owner_id == current_user.id)
+    if alert.alert_type == "brute_force" or not alert.username:
+        log_query = log_query.filter(Log.source_ip == alert.source_ip)
+    else:
+        log_query = log_query.filter(Log.username == alert.username)
+
+    related_logs = log_query.order_by(desc(Log.timestamp)).limit(20).all()
 
     return {
         "id": alert.id,
@@ -295,19 +298,22 @@ def seed_demo_data(
 ):
     """
     Generate sample log data (and trigger the detector) for the current user.
-    Safe to call multiple times — each call adds a fresh batch.
+    Each call adds a fresh batch of normal traffic plus ONE randomly chosen
+    attack scenario (brute_force, geo_anomaly, off_hours_login,
+    privilege_escalation, or impossible_travel) — safe to call repeatedly
+    to build up a varied alert feed.
     """
-    from log_generator import generate_normal_batch, generate_attack_burst
+    from log_generator import generate_normal_batch, generate_random_scenario
 
     # 1. Generate logs attributed to this user
     normal_count = 25
-    attack_count = 6
     generate_normal_batch(db, current_user.id, count=normal_count)
 
+    scenario_triggered = None
     if body.include_attack:
-        generate_attack_burst(db, current_user.id, count=attack_count)
+        scenario_triggered = generate_random_scenario(db, current_user.id)
 
-    # 2. Run brute-force detection immediately for this user so alerts appear
+    # 2. Run all 5 detection rules immediately for this user so alerts appear
     try:
         from detector import check_brute_force_for_user
         check_brute_force_for_user(db, current_user.id)
@@ -318,7 +324,8 @@ def seed_demo_data(
     alert_count = db.query(Alert).filter(Alert.owner_id == current_user.id).count()
 
     return {
-        "logs_created": normal_count + (attack_count if body.include_attack else 0),
+        "logs_created": normal_count,
         "attack_simulated": body.include_attack,
+        "scenario_type": scenario_triggered,
         "total_alerts": alert_count,
     }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import Navbar from '../components/Navbar';
 import './Dashboard.css';
 
 const API_BASE = 'http://127.0.0.1:8000';
@@ -456,7 +456,6 @@ let toastCounter = 0;
 
 export default function Dashboard() {
   const { user, token, logout } = useAuth();
-  const { dark, toggle } = useTheme();
   const [alerts, setAlerts] = useState([]);
   const [fetchError, setFetchError] = useState('');
   const [selectedId, setSelectedId] = useState(null);
@@ -584,40 +583,10 @@ export default function Dashboard() {
       {/* Toast container */}
       <Toast toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Dashboard top bar */}
-      <div className="dash-topbar glass">
-        <Link to="/" className="dash-home-btn">
-          <span className="dash-home-icon">←</span>
-          <span>Home</span>
-        </Link>
-        <div className="dash-topbar-brand">
-          <span className="dash-topbar-hex">⬡</span>
-          <span className="dash-topbar-name gradient-text">Aegis AI</span>
-          <span className="dash-topbar-sep">·</span>
-          <span className="dash-topbar-page">Dashboard</span>
-        </div>
-        <div className="dash-topbar-right">
-          <button
-            className="theme-toggle"
-            onClick={toggle}
-            aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            <span className="theme-toggle-icon">☀️</span>
-            <span className="theme-toggle-track"><span className="theme-toggle-thumb" /></span>
-            <span className="theme-toggle-icon">🌙</span>
-          </button>
-          {user && (
-            <span className="dash-topbar-user">
-              <span className="user-dot" />
-              {user.username}
-              <span className="plan-badge">{user.plan}</span>
-            </span>
-          )}
-        </div>
-      </div>
+      {/* Global Navbar — same as all other pages */}
+      <Navbar />
 
       <div className="page dashboard-page">
-
       <div className="dashboard-content">
         {/* Header */}
         <header className="dash-header">

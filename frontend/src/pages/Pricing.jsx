@@ -12,11 +12,11 @@ const TIERS = [
     period: '/mo',
     tagline: 'Perfect for individuals exploring Aegis AI.',
     features: [
-      { icon: '📋', text: '1,000 log events / day' },
-      { icon: '👤', text: '1 user seat' },
-      { icon: '💬', text: 'Community support' },
-      { icon: '🤖', text: 'AI alert analysis (basic)' },
-      { icon: '📊', text: 'Live dashboard' },
+      { icon: '⬡', text: '1,000 log events / day' },
+      { icon: '⬡', text: '1 user seat' },
+      { icon: '⬡', text: 'Community support' },
+      { icon: '⬡', text: 'AI alert analysis (basic)' },
+      { icon: '⬡', text: 'Live dashboard' },
     ],
     cta: 'Get Started Free',
     ctaLink: '/auth?mode=signup',
@@ -30,13 +30,13 @@ const TIERS = [
     tagline: 'For growing security teams that need real power.',
     badge: 'Most Popular',
     features: [
-      { icon: '📋', text: '100,000 log events / day' },
-      { icon: '👥', text: 'Up to 5 user seats' },
-      { icon: '📧', text: 'Priority email support' },
-      { icon: '⚙️', text: 'Custom detection rules' },
-      { icon: '🤖', text: 'Full AI analyst agent (LLaMA 3.3 70B)' },
-      { icon: '🗺️', text: 'MITRE ATT&CK auto-mapping' },
-      { icon: '🔗', text: 'REST API + webhook access' },
+      { icon: '⬡', text: '100,000 log events / day' },
+      { icon: '⬡', text: 'Up to 5 user seats' },
+      { icon: '⬡', text: 'Priority email support' },
+      { icon: '⬡', text: 'Custom detection rules' },
+      { icon: '⬡', text: 'Full AI analyst agent (LLaMA 3.3 70B)' },
+      { icon: '⬡', text: 'MITRE ATT&CK auto-mapping' },
+      { icon: '⬡', text: 'REST API + webhook access' },
     ],
     cta: 'Upgrade to Pro',
     highlighted: true,
@@ -48,14 +48,14 @@ const TIERS = [
     period: '/mo',
     tagline: 'For organisations demanding reliability at scale.',
     features: [
-      { icon: '♾️', text: 'Unlimited log events / day' },
-      { icon: '🏢', text: 'Unlimited user seats' },
-      { icon: '🔐', text: 'SSO / SAML 2.0 integration' },
-      { icon: '📜', text: 'Custom SLA guarantee' },
-      { icon: '🛡️', text: 'Dedicated support engineer' },
-      { icon: '🤖', text: 'Full AI analyst agent (LLaMA 3.3 70B)' },
-      { icon: '📋', text: 'Audit logs & compliance reports' },
-      { icon: '⚙️', text: 'Custom detection rules' },
+      { icon: '⬡', text: 'Unlimited log events / day' },
+      { icon: '⬡', text: 'Unlimited user seats' },
+      { icon: '⬡', text: 'SSO / SAML 2.0 integration' },
+      { icon: '⬡', text: 'Custom SLA guarantee' },
+      { icon: '⬡', text: 'Dedicated support engineer' },
+      { icon: '⬡', text: 'Full AI analyst agent (LLaMA 3.3 70B)' },
+      { icon: '⬡', text: 'Audit logs & compliance reports' },
+      { icon: '⬡', text: 'Custom detection rules' },
     ],
     cta: 'Contact Sales',
     highlighted: false,
@@ -111,7 +111,7 @@ function CheckoutModal({ tier, onClose }) {
             </div>
 
             <div className="modal-secure-badge glass">
-              <span>🔒</span> Secured by Stripe — your card details never touch our servers
+              <span>⬡</span> Secured by Stripe — your card details never touch our servers
             </div>
 
             <form className="checkout-form" onSubmit={handleSubmit} noValidate>
@@ -130,7 +130,7 @@ function CheckoutModal({ tier, onClose }) {
               <div className="field-group">
                 <label>Card Number</label>
                 <div className="card-input-wrap">
-                  <span className="card-scheme">💳</span>
+                  <span className="card-scheme">⬡</span>
                   <input
                     className={`input card-number-input ${errors.number ? 'input-error' : ''}`}
                     type="text"

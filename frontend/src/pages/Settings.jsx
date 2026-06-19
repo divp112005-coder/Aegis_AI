@@ -157,7 +157,7 @@ export default function Settings() {
         {/* Page heading */}
         <header className="settings-header">
           <div className="settings-header-inner">
-            <span className="settings-header-icon">⚙️</span>
+            <span className="settings-header-icon">⬡</span>
             <div>
               <h1 className="settings-title">
                 Account <span className="gradient-text">Settings</span>
@@ -170,7 +170,7 @@ export default function Settings() {
         <div className="settings-grid">
 
           {/* ── Profile ── */}
-          <SectionCard icon="👤" title="Your Profile">
+          <SectionCard icon="⬡" title="Your Profile">
             <div className="profile-avatar-row">
               <div className="profile-avatar">
                 {(user?.full_name || user?.username || '?')[0].toUpperCase()}
@@ -205,7 +205,7 @@ export default function Settings() {
           </SectionCard>
 
           {/* ── Change Password ── */}
-          <SectionCard icon="🔐" title="Change Password">
+          <SectionCard icon="⬡" title="Change Password">
             <form className="pw-form" onSubmit={handlePwChange} noValidate>
               <div className="field-group">
                 <label htmlFor="current_password">Current Password</label>
@@ -283,7 +283,7 @@ export default function Settings() {
           </SectionCard>
 
           {/* ── API Key ── */}
-          <SectionCard icon="🔑" title="API Key">
+          <SectionCard icon="⬡" title="API Key">
             <p className="apikey-desc">
               Use this key to authenticate requests to the Aegis AI REST API. Keep it secret — never expose it in client-side code.
             </p>
@@ -311,12 +311,12 @@ export default function Settings() {
               </div>
             </div>
             <p className="apikey-note">
-              🛡 This is a mock key for demonstration. Real key generation will be available in the Pro plan.
+              ⬡ This is a mock key for demonstration. Real key generation will be available in the Pro plan.
             </p>
           </SectionCard>
 
           {/* ── Danger Zone ── */}
-          <SectionCard icon="⚠️" title="Danger Zone">
+          <SectionCard icon="⬡" title="Danger Zone">
             <p className="danger-desc">
               Permanently delete your account and all associated data. This action is irreversible.
             </p>
@@ -328,7 +328,7 @@ export default function Settings() {
               <div className="delete-btn-group">
                 {deleteStep === 'confirm' && (
                   <p className="delete-confirm-msg">
-                    ⚠️ Are you sure? This cannot be undone.
+                    ⬡ Are you sure? This cannot be undone.
                   </p>
                 )}
                 {deleteStep === 'error' && (
@@ -352,9 +352,9 @@ export default function Settings() {
                     {deleteStep === 'deleting' ? (
                       <><span className="btn-spinner" style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} /> Deleting…</>
                     ) : deleteStep === 'confirm' ? (
-                      '🗑 Yes, Delete My Account'
+                      '⬡ Yes, Delete My Account'
                     ) : (
-                      '🗑 Delete Account'
+                      '⬡ Delete Account'
                     )}
                   </button>
                 </div>

@@ -4,11 +4,11 @@ import './Docs.css';
 
 const SECTIONS = [
   { id: 'overview',        label: 'Overview',         icon: '⬡' },
-  { id: 'quickstart',      label: 'Quick Start',       icon: '⚡' },
-  { id: 'api-reference',   label: 'API Reference',     icon: '🔗' },
-  { id: 'detection-rules', label: 'Detection Rules',   icon: '🛡️' },
-  { id: 'ai-analyst',      label: 'AI Analyst',        icon: '🤖' },
-  { id: 'faq',             label: 'FAQ',               icon: '❓' },
+  { id: 'quickstart',      label: 'Quick Start',       icon: <span className="nav-dot" /> },
+  { id: 'api-reference',   label: 'API Reference',     icon: <span className="nav-dot" /> },
+  { id: 'detection-rules', label: 'Detection Rules',   icon: <span className="nav-dot" /> },
+  { id: 'ai-analyst',      label: 'AI Analyst',        icon: <span className="nav-dot" /> },
+  { id: 'faq',             label: 'FAQ',               icon: <span className="nav-dot" /> },
 ];
 
 const API_ENDPOINTS = [
@@ -157,9 +157,13 @@ function FaqItem({ q, a }) {
     <div className={`faq-item glass ${open ? 'faq-open' : ''}`}>
       <button className="faq-question" onClick={() => setOpen(!open)}>
         <span>{q}</span>
-        <span className="faq-chevron">{open ? '▲' : '▼'}</span>
+        <span className="faq-chevron">▼</span>
       </button>
-      {open && <p className="faq-answer">{a}</p>}
+      <div className="faq-answer-wrapper">
+        <div className="faq-answer-inner">
+          <p className="faq-answer">{a}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -246,21 +250,21 @@ export default function Docs() {
 
             <div className="info-cards">
               <div className="info-card glass-glow">
-                <div className="info-card-icon">⚡</div>
+                <div className="info-card-icon">⬡</div>
                 <div>
                   <strong>Real-time</strong>
                   <p>Detection engine runs every 10 seconds</p>
                 </div>
               </div>
               <div className="info-card glass-glow">
-                <div className="info-card-icon">🤖</div>
+                <div className="info-card-icon">⬡</div>
                 <div>
                   <strong>LLaMA 3.3 70B</strong>
                   <p>Every alert gets full AI analysis</p>
                 </div>
               </div>
               <div className="info-card glass-glow">
-                <div className="info-card-icon">🗺️</div>
+                <div className="info-card-icon">⬡</div>
                 <div>
                   <strong>MITRE ATT&CK</strong>
                   <p>Auto-mapped on every alert</p>
@@ -269,7 +273,7 @@ export default function Docs() {
             </div>
 
             <div className="architecture-note glass">
-              <span className="arch-icon">🏗️</span>
+              <span className="arch-icon">⬡</span>
               <div>
                 <strong>Architecture at a glance</strong>
                 <p>
@@ -543,7 +547,7 @@ rules:
 }`} />
 
             <div className="ai-note glass-glow">
-              <span className="ai-note-icon">💡</span>
+              <span className="ai-note-icon">⬡</span>
               <div>
                 <strong>Human-in-the-loop by design</strong>
                 <p>
@@ -571,7 +575,7 @@ rules:
             </div>
 
             <div className="docs-cta glass-strong">
-              <span className="cta-icon">💬</span>
+              <span className="cta-icon">⬡</span>
               <div>
                 <strong>Still have questions?</strong>
                 <p>Open an issue on GitHub or start a discussion — we respond within 24 hours.</p>

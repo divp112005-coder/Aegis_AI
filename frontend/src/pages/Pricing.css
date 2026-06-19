@@ -87,9 +87,9 @@
 
 /* ── Pro highlight — gradient border glow ────────────────────────── */
 .tier-pro {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(48px) saturate(240%);
+  -webkit-backdrop-filter: blur(48px) saturate(240%);
 
   /* double-layer border: real border + pseudo gradient ring */
   border: 1px solid transparent;
@@ -101,7 +101,7 @@
     0 0 32px rgba(201, 79, 120, 0.22),
     0 0 60px rgba(139, 110, 190, 0.14),
     0 8px 40px rgba(201, 79, 120, 0.12),
-    inset 0 1px 0 #fff;
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 /* animated gradient ring around Pro card */
@@ -138,6 +138,31 @@
 }
 
 /* ── Popular badge ───────────────────────────────────────────────── */
+.popular-badge {
+  position: absolute;
+  top: -14px;
+  right: 1.5rem;
+  background: linear-gradient(135deg, var(--rose) 0%, var(--lavender) 100%);
+  color: #fff;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 16px rgba(201, 79, 120, 0.35);
+}
+
+[data-theme="dark"] .tier-pro {
+  background: rgba(20, 8, 15, 0.60);
+  box-shadow:
+    0 0 0 2px rgba(220, 80, 130, 0.5),
+    0 0 32px rgba(220, 80, 130, 0.25),
+    0 0 60px rgba(139, 110, 190, 0.15),
+    0 8px 40px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
 .tier-badge {
   position: absolute;
   top: -14px;

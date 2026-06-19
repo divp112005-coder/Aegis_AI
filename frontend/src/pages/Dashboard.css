@@ -188,7 +188,7 @@
 
 .dashboard-content {
   flex: 1;
-  padding: 5.5rem 2.5rem 3rem;
+  padding: 6.5rem 2.5rem 3rem;  /* 6.5rem clears global Navbar (16px top + ~80px height) */
   max-width: 1600px;
   width: 100%;
   margin: 0 auto;

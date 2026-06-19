@@ -3,12 +3,12 @@ import Navbar from '../components/Navbar';
 import './Landing.css';
 
 const FEATURES = [
-  { icon: '⚡', title: 'Real-Time Detection', desc: 'Brute-force, anomaly, and threat pattern detection running every 10 seconds across all your log sources.' },
-  { icon: '🤖', title: 'AI Analyst Agent', desc: 'LLaMA 3.3 70B automatically investigates every alert — summary, MITRE ATT&CK mapping, and recommended action.' },
-  { icon: '🛡️', title: 'Human-in-the-Loop', desc: 'AI recommends, you decide. Approve or dismiss alerts with full context before any action is taken.' },
-  { icon: '📊', title: 'Live Dashboard', desc: 'Real-time alert feed with severity heatmaps, related log timelines, and full analyst reports on click.' },
-  { icon: '🔗', title: 'REST API', desc: 'Integrate with your existing stack. Full API access with JWT auth, filterable log queries, and webhook support.' },
-  { icon: '🗺️', title: 'MITRE ATT&CK', desc: 'Every alert is automatically tagged with the relevant ATT&CK technique ID — no manual mapping needed.' },
+  { icon: '⬡', title: 'Real-Time Detection', desc: 'Brute-force, anomaly, and threat pattern detection running every 10 seconds across all your log sources.' },
+  { icon: '⬡', title: 'AI Analyst Agent', desc: 'LLaMA 3.3 70B automatically investigates every alert — summary, MITRE ATT&CK mapping, and recommended action.' },
+  { icon: '⬡', title: 'Human-in-the-Loop', desc: 'AI recommends, you decide. Approve or dismiss alerts with full context before any action is taken.' },
+  { icon: '⬡', title: 'Live Dashboard', desc: 'Real-time alert feed with severity heatmaps, related log timelines, and full analyst reports on click.' },
+  { icon: '⬡', title: 'REST API', desc: 'Integrate with your existing stack. Full API access with JWT auth, filterable log queries, and webhook support.' },
+  { icon: '⬡', title: 'MITRE ATT&CK', desc: 'Every alert is automatically tagged with the relevant ATT&CK technique ID — no manual mapping needed.' },
 ];
 
 const STATS = [
@@ -29,25 +29,24 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="hero">
-        <div className="hero-badge glass">
-          <span className="badge-dot" />
-          AI-Powered Security Operations
-        </div>
-        <h1 className="hero-title">
-          Your SOC,<br />
-          <span className="gradient-text">Supercharged by AI</span>
-        </h1>
-        <p className="hero-sub">
-          Aegis AI combines real-time threat detection with autonomous AI investigation.
-          Stop drowning in alerts — let the AI triage, explain, and recommend while you make the call.
-        </p>
-        <div className="hero-actions">
-          <Link to="/auth?mode=signup" className="btn btn-primary btn-lg">
-            Start Free Trial →
-          </Link>
-          <Link to="/docs" className="btn btn-ghost btn-lg">
-            View Docs
-          </Link>
+        <div className="hero-content">
+          <div className="hero-badge glass">
+            <span className="badge-dot" />
+            AI-Powered Security Operations
+          </div>
+          <h1 className="hero-title">
+            Your SOC,<br />
+            <span className="gradient-text">Supercharged by AI</span>
+          </h1>
+          <p className="hero-sub">
+            Aegis AI combines real-time threat detection with autonomous AI investigation.
+            Stop drowning in alerts — let the AI triage, explain, and recommend while you make the call.
+          </p>
+          <div className="hero-actions">
+            <Link to="/auth?mode=signup" className="btn btn-primary btn-lg">
+              Start Free Trial →
+            </Link>
+          </div>
         </div>
 
         {/* Mock terminal */}

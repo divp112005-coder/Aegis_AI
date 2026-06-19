@@ -2,13 +2,20 @@
 
 /* Hero */
 .hero {
+  display: grid;
+  grid-template-columns: 1fr 1.618fr;
+  align-items: center;
+  gap: 4rem;
+  padding: 10rem 2rem 6rem;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.hero-content {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 10rem 2rem 6rem;
-  max-width: 900px;
-  margin: 0 auto;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .hero-badge {
@@ -57,9 +64,8 @@
 .hero-actions {
   display: flex;
   gap: 1rem;
-  margin-bottom: 4rem;
+  margin-bottom: 2rem;
   flex-wrap: wrap;
-  justify-content: center;
 }
 
 .btn-lg {
@@ -70,9 +76,9 @@
 /* Terminal */
 .hero-terminal {
   width: 100%;
-  max-width: 700px;
   text-align: left;
   overflow: hidden;
+  box-shadow: 0 24px 60px rgba(201, 79, 120, 0.15);
 }
 
 .terminal-bar {
@@ -98,6 +104,11 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   font-family: var(--font-mono);
+}
+
+[data-theme="dark"] .terminal-title {
+  color: var(--rose-light);
+  opacity: 0.85;
 }
 
 .terminal-body {
@@ -273,3 +284,21 @@
 }
 
 .footer-links a:hover { color: var(--rose); }
+
+/* -- Responsive Golden Ratio --------------------------------------------- */
+@media (max-width: 1024px) {
+  .hero {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 3rem;
+  }
+  
+  .hero-content {
+    align-items: center;
+    text-align: center;
+  }
+  
+  .hero-title {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+  }
+}

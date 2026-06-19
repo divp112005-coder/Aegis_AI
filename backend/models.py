@@ -75,6 +75,25 @@ class AnalystReport(Base):
     alert = relationship("Alert", back_populates="report")
 
 
+class BlockedIP(Base):
+    """Simulated IP block record. Approving an alert creates a row here —
+    this does NOT touch any real firewall or network device. It exists to
+    demonstrate the human-in-the-loop SOAR response workflow in the UI."""
+    __tablename__ = "blocked_ips"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    alert_id = Column(Integer, ForeignKey("alerts.id"), nullable=True)
+    ip_address = Column(String, index=True, nullable=False)
+    status = Column(String, default="blocked")  # blocked / unblocked
+    firewall_rule_name = Column(String, nullable=True)  # simulated label only, e.g. "SIMULATED_1.2.3.4"
+    blocked_at = Column(DateTime, nullable=False)
+    unblocked_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)  # unused in simulated mode, kept for future real integration
+
+    owner = relationship("User")
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 

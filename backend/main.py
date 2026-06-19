@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from models import SessionLocal, Log, Alert, AnalystReport, User, init_db
+from models import SessionLocal, Log, Alert, AnalystReport, User, BlockedIP, init_db
 from auth import router as auth_router, get_current_user
 
 app = FastAPI(title="Aegis AI", version="0.1.0")
@@ -193,7 +193,91 @@ def update_alert_status(
     alert = _get_owned_alert(db, alert_id, current_user)
     alert.status = new_status
     db.commit()
-    return {"id": alert.id, "status": alert.status}
+
+    block_result = None
+
+    if new_status == "approved":
+        # Approve = simulated SOAR action: record the IP as "blocked" in our
+        # own block-list table. This does NOT touch any real firewall or
+        # network device — it's a demonstration of the human-in-the-loop
+        # response workflow, not an actual network control.
+        existing_block = (
+            db.query(BlockedIP)
+            .filter(
+                BlockedIP.owner_id == current_user.id,
+                BlockedIP.ip_address == alert.source_ip,
+                BlockedIP.status == "blocked",
+            )
+            .first()
+        )
+
+        if existing_block:
+            block_result = {"action": "already_blocked", "ip_address": alert.source_ip}
+        else:
+            blocked_ip = BlockedIP(
+                owner_id=current_user.id,
+                alert_id=alert.id,
+                ip_address=alert.source_ip,
+                status="blocked",
+                firewall_rule_name=f"SIMULATED_{alert.source_ip}",
+                blocked_at=datetime.utcnow(),
+                error_message=None,
+            )
+            db.add(blocked_ip)
+            db.commit()
+            block_result = {"action": "blocked", "ip_address": alert.source_ip, "simulated": True}
+
+    elif new_status == "dismissed":
+        block_result = {"action": "ignored", "ip_address": alert.source_ip}
+
+    return {"id": alert.id, "status": alert.status, "block_result": block_result}
+
+
+@app.get("/blocked-ips")
+def list_blocked_ips(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    blocks = (
+        db.query(BlockedIP)
+        .filter(BlockedIP.owner_id == current_user.id)
+        .order_by(desc(BlockedIP.blocked_at))
+        .all()
+    )
+    return [
+        {
+            "id": b.id,
+            "alert_id": b.alert_id,
+            "ip_address": b.ip_address,
+            "status": b.status,
+            "blocked_at": b.blocked_at.isoformat(),
+            "unblocked_at": b.unblocked_at.isoformat() if b.unblocked_at else None,
+        }
+        for b in blocks
+    ]
+
+
+@app.post("/blocked-ips/{block_id}/unblock")
+def unblock_ip_endpoint(
+    block_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    block = (
+        db.query(BlockedIP)
+        .filter(BlockedIP.id == block_id, BlockedIP.owner_id == current_user.id)
+        .first()
+    )
+    if not block:
+        raise HTTPException(status_code=404, detail="Blocked IP record not found")
+    if block.status != "blocked":
+        raise HTTPException(status_code=400, detail=f"IP is not currently blocked (status={block.status})")
+
+    # Simulated unblock — just flips the DB record, no real network action.
+    block.status = "unblocked"
+    block.unblocked_at = datetime.utcnow()
+    db.commit()
+    return {"id": block.id, "status": block.status}
 
 
 # ── Demo seed ────────────────────────────────────────────────────────────────

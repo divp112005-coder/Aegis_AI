@@ -194,3 +194,47 @@ def update_alert_status(
     alert.status = new_status
     db.commit()
     return {"id": alert.id, "status": alert.status}
+
+
+# ── Demo seed ────────────────────────────────────────────────────────────────
+from pydantic import BaseModel as PydanticModel
+
+class SeedRequest(PydanticModel):
+    include_attack: bool = True
+
+
+@app.post("/demo/seed")
+def seed_demo_data(
+    body: SeedRequest = SeedRequest(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate sample log data (and trigger the detector) for the current user.
+    Safe to call multiple times — each call adds a fresh batch.
+    """
+    from log_generator import generate_normal_batch, generate_attack_burst
+
+    # 1. Generate logs attributed to this user
+    normal_count = 25
+    attack_count = 6
+    generate_normal_batch(db, current_user.id, count=normal_count)
+
+    if body.include_attack:
+        generate_attack_burst(db, current_user.id, count=attack_count)
+
+    # 2. Run brute-force detection immediately for this user so alerts appear
+    try:
+        from detector import check_brute_force_for_user
+        check_brute_force_for_user(db, current_user.id)
+    except Exception:
+        pass  # detector is best-effort; logs are still saved
+
+    # 3. Count resulting alerts for the response
+    alert_count = db.query(Alert).filter(Alert.owner_id == current_user.id).count()
+
+    return {
+        "logs_created": normal_count + (attack_count if body.include_attack else 0),
+        "attack_simulated": body.include_attack,
+        "total_alerts": alert_count,
+    }

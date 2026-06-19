@@ -262,6 +262,8 @@ export default function Dashboard() {
   const [fetchError, setFetchError] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [seedStatus, setSeedStatus] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
+  const [seedResult, setSeedResult] = useState(null);
   const intervalRef = useRef(null);
 
   const fetchAlerts = useCallback(async () => {
@@ -278,6 +280,35 @@ export default function Dashboard() {
       setFetchError(err.message);
     }
   }, [token]);
+
+  const seedDemoData = async () => {
+    if (!token || seedStatus === 'loading') return;
+    setSeedStatus('loading');
+    setSeedResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/demo/seed`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ include_attack: true }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || 'Seed failed');
+      }
+      const result = await res.json();
+      setSeedResult(result);
+      setSeedStatus('done');
+      // Refresh immediately then let the interval take over
+      await fetchAlerts();
+      setTimeout(() => setSeedStatus('idle'), 4000);
+    } catch (err) {
+      setSeedStatus('error');
+      setTimeout(() => setSeedStatus('idle'), 3000);
+    }
+  };
 
   // Initial fetch + 5s auto-refresh
   useEffect(() => {
@@ -349,9 +380,32 @@ export default function Dashboard() {
             </h1>
             <p className="dash-sub">Real-time threat monitoring · Auto-refresh every 5s</p>
           </div>
-          <div className="dash-live">
-            <span className="live-dot" />
-            <span className="live-label">LIVE</span>
+          <div className="dash-header-right">
+            {/* Generate Sample Data button */}
+            <button
+              className={`btn seed-btn${
+                seedStatus === 'loading' ? ' seed-loading' :
+                seedStatus === 'done'    ? ' seed-done'    :
+                seedStatus === 'error'   ? ' seed-error'   : ''
+              }`}
+              onClick={seedDemoData}
+              disabled={seedStatus === 'loading'}
+              title="Populate your dashboard with sample logs and attack simulations"
+            >
+              {seedStatus === 'loading' ? (
+                <><span className="btn-spinner seed-spinner" />Generating…</>
+              ) : seedStatus === 'done' ? (
+                <>✓ {seedResult?.logs_created} logs added</>
+              ) : seedStatus === 'error' ? (
+                <>⚠ Seed failed</>
+              ) : (
+                <>⚡ Generate Sample Data</>
+              )}
+            </button>
+            <div className="dash-live">
+              <span className="live-dot" />
+              <span className="live-label">LIVE</span>
+            </div>
           </div>
         </header>
 
@@ -406,11 +460,40 @@ export default function Dashboard() {
 
             <div className="alert-table-wrapper glass">
               {filteredAlerts.length === 0 ? (
-                <div className="empty-state">
-                  <span className="empty-icon">🔍</span>
-                  <p>No alerts match the current filter.</p>
-                  <p className="empty-sub">Generate some attack logs to see alerts here.</p>
-                </div>
+                alerts.length === 0 ? (
+                  /* ── True empty state: no data at all ── */
+                  <div className="empty-state empty-state-full">
+                    <div className="empty-hero-icon">🛡️</div>
+                    <h3 className="empty-title">No data yet</h3>
+                    <p className="empty-sub">
+                      Your dashboard is empty. Generate sample logs and a simulated
+                      brute-force attack to see how Aegis AI detects and triages threats.
+                    </p>
+                    <button
+                      className={`btn btn-primary seed-btn-big${
+                        seedStatus === 'loading' ? ' seed-loading' :
+                        seedStatus === 'done'    ? ' seed-done'    : ''
+                      }`}
+                      onClick={seedDemoData}
+                      disabled={seedStatus === 'loading'}
+                    >
+                      {seedStatus === 'loading' ? (
+                        <><span className="btn-spinner seed-spinner" />Generating sample data…</>
+                      ) : seedStatus === 'done' ? (
+                        <>✓ Done! {seedResult?.logs_created} logs · {seedResult?.total_alerts} alerts</>
+                      ) : (
+                        <>⚡ Generate Sample Data</>
+                      )}
+                    </button>
+                    <p className="empty-note">Safe to run multiple times · No real data is affected</p>
+                  </div>
+                ) : (
+                  /* ── Filter returned nothing ── */
+                  <div className="empty-state">
+                    <span className="empty-icon">🔍</span>
+                    <p>No alerts match the current filter.</p>
+                  </div>
+                )
               ) : (
                 <table className="alert-table">
                   <thead>

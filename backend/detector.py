@@ -1,29 +1,33 @@
 """
 Detector job: runs periodically, checks for brute-force patterns
-(5+ failed logins from the same source IP within the last minute),
-and creates an Alert if one doesn't already exist for that IP recently.
+(5+ failed logins from the same source IP within the last minute)
+PER USER (owner_id), and creates an Alert scoped to that user if one
+doesn't already exist for that IP recently.
 """
 
 import time
 from datetime import datetime, timedelta
-from collections import defaultdict
 
 from sqlalchemy import func
 
-from models import SessionLocal, Log, Alert, init_db
+from models import SessionLocal, Log, Alert, User, init_db
 
 FAILED_LOGIN_THRESHOLD = 5
 LOOKBACK_MINUTES = 1
 DEDUPE_WINDOW_MINUTES = 5  # don't re-alert on the same IP within this window
 
 
-def check_brute_force(session):
+def check_brute_force_for_user(session, owner_id: int):
     cutoff = datetime.utcnow() - timedelta(minutes=LOOKBACK_MINUTES)
 
-    # Count failed logins per source_ip in the lookback window
+    # Count failed logins per source_ip in the lookback window, scoped to this user's logs
     results = (
         session.query(Log.source_ip, Log.username, func.count(Log.id).label("fail_count"))
-        .filter(Log.event_type == "login_failed", Log.timestamp >= cutoff)
+        .filter(
+            Log.owner_id == owner_id,
+            Log.event_type == "login_failed",
+            Log.timestamp >= cutoff,
+        )
         .group_by(Log.source_ip, Log.username)
         .having(func.count(Log.id) >= FAILED_LOGIN_THRESHOLD)
         .all()
@@ -34,6 +38,7 @@ def check_brute_force(session):
         existing = (
             session.query(Alert)
             .filter(
+                Alert.owner_id == owner_id,
                 Alert.source_ip == source_ip,
                 Alert.alert_type == "brute_force",
                 Alert.created_at >= dedupe_cutoff,
@@ -44,6 +49,7 @@ def check_brute_force(session):
             continue  # already alerted recently, skip
 
         alert = Alert(
+            owner_id=owner_id,
             created_at=datetime.utcnow(),
             alert_type="brute_force",
             source_ip=source_ip,
@@ -54,9 +60,9 @@ def check_brute_force(session):
         )
         session.add(alert)
         session.commit()
-        print(f"[ALERT CREATED] brute_force from {source_ip} (user={username}, fails={fail_count})")
+        print(f"[ALERT CREATED] owner_id={owner_id} brute_force from {source_ip} (user={username}, fails={fail_count})")
 
-        # Trigger AI analysis (Step 3) - import here to avoid circular import issues
+        # Trigger AI analysis - import here to avoid circular import issues
         try:
             from ai_analyst import analyze_alert
             analyze_alert(alert.id)
@@ -64,14 +70,21 @@ def check_brute_force(session):
             print(f"[AI ANALYST ERROR] {e}")
 
 
+def run_detection_cycle(session):
+    """Run detection for every active user in the system."""
+    user_ids = [u.id for u in session.query(User.id).all()]
+    for owner_id in user_ids:
+        check_brute_force_for_user(session, owner_id)
+
+
 def run_loop(interval=10):
     init_db()
-    print(f"Detector running every {interval}s. Ctrl+C to stop.")
+    print(f"Detector running every {interval}s across all users. Ctrl+C to stop.")
     try:
         while True:
             session = SessionLocal()
             try:
-                check_brute_force(session)
+                run_detection_cycle(session)
             finally:
                 session.close()
             time.sleep(interval)

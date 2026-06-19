@@ -47,9 +47,9 @@ def get_logs(
     source_ip: Optional[str] = None,
     event_type: Optional[str] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Log)
+    query = db.query(Log).filter(Log.owner_id == current_user.id)
     if source_ip:
         query = query.filter(Log.source_ip == source_ip)
     if event_type:
@@ -72,9 +72,9 @@ def get_logs(
 def get_alerts(
     status_filter: Optional[str] = Query(None, alias="status"),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Alert)
+    query = db.query(Alert).filter(Alert.owner_id == current_user.id)
     if status_filter:
         query = query.filter(Alert.status == status_filter)
     alerts = query.order_by(desc(Alert.created_at)).all()
@@ -93,15 +93,26 @@ def get_alerts(
     ]
 
 
+def _get_owned_alert(db: Session, alert_id: int, current_user: User) -> Alert:
+    """Fetch an alert and 404 if it doesn't exist OR doesn't belong to the current user.
+    Using 404 (not 403) for unowned alerts avoids leaking which alert IDs exist."""
+    alert = (
+        db.query(Alert)
+        .filter(Alert.id == alert_id, Alert.owner_id == current_user.id)
+        .first()
+    )
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
+
+
 @app.get("/alerts/{alert_id}")
 def get_alert_detail(
     alert_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    alert = db.query(Alert).filter(Alert.id == alert_id).first()
-    if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
+    alert = _get_owned_alert(db, alert_id, current_user)
 
     report = None
     if alert.report:
@@ -113,10 +124,10 @@ def get_alert_detail(
             "created_at": alert.report.created_at.isoformat(),
         }
 
-    # Pull related logs for context (same source_ip)
+    # Pull related logs for context (same source_ip, same owner)
     related_logs = (
         db.query(Log)
-        .filter(Log.source_ip == alert.source_ip)
+        .filter(Log.source_ip == alert.source_ip, Log.owner_id == current_user.id)
         .order_by(desc(Log.timestamp))
         .limit(20)
         .all()
@@ -149,11 +160,9 @@ def get_alert_detail(
 def trigger_analysis(
     alert_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    alert = db.query(Alert).filter(Alert.id == alert_id).first()
-    if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
+    alert = _get_owned_alert(db, alert_id, current_user)
 
     from ai_analyst import analyze_alert
     analyze_alert(alert_id)
@@ -177,13 +186,11 @@ def update_alert_status(
     alert_id: int,
     new_status: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     if new_status not in ("open", "approved", "dismissed"):
         raise HTTPException(status_code=400, detail="Invalid status")
-    alert = db.query(Alert).filter(Alert.id == alert_id).first()
-    if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
+    alert = _get_owned_alert(db, alert_id, current_user)
     alert.status = new_status
     db.commit()
     return {"id": alert.id, "status": alert.status}

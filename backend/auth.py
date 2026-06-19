@@ -193,23 +193,14 @@ def delete_account(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Permanently delete the authenticated user and all their associated data."""
-    # Delete analyst reports linked to alerts owned by this user (by username)
-    alert_ids = db.query(Alert.id).filter(Alert.username == current_user.username).all()
-    alert_id_list = [a.id for a in alert_ids]
-    if alert_id_list:
-        db.query(AnalystReport).filter(AnalystReport.alert_id.in_(alert_id_list)).delete(
+    """Permanently delete the authenticated user and all data they own."""
+    alert_ids = [a.id for a in db.query(Alert.id).filter(Alert.owner_id == current_user.id).all()]
+    if alert_ids:
+        db.query(AnalystReport).filter(AnalystReport.alert_id.in_(alert_ids)).delete(
             synchronize_session=False
         )
-    # Delete alerts
-    db.query(Alert).filter(Alert.username == current_user.username).delete(
-        synchronize_session=False
-    )
-    # Delete logs attributed to this username
-    db.query(Log).filter(Log.username == current_user.username).delete(
-        synchronize_session=False
-    )
-    # Delete the user record itself
+    db.query(Alert).filter(Alert.owner_id == current_user.id).delete(synchronize_session=False)
+    db.query(Log).filter(Log.owner_id == current_user.id).delete(synchronize_session=False)
     db.delete(current_user)
     db.commit()
     return {"detail": "Account deleted successfully"}

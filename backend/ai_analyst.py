@@ -1,6 +1,6 @@
 """
-AI Analyst: takes an alert, gathers related logs, sends them to Grok
-(xAI's API, OpenAI-compatible), and stores the structured response
+AI Analyst: takes an alert, gathers related logs, sends them to Groq
+(OpenAI-compatible API), and stores the structured response
 as an AnalystReport.
 """
 

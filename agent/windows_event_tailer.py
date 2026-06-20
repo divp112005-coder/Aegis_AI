@@ -81,26 +81,56 @@ def _extract_source_ip(event) -> str:
     return "127.0.0.1"  # local/interactive logon with no remote address
 
 
-def read_new_events(handle, last_record_number: int):
-    """Reads events newer than last_record_number, returns (events, new_last_record_number)."""
+def read_new_events(handle, last_record_number: int, debug=False):
+    """
+    Reads all events newer than last_record_number from the Security log.
+
+    Strategy: read backwards from the most recent event in batches. For each
+    batch, collect every event whose RecordNumber > last_record_number AND
+    whose EventID is one we care about. We only stop once we hit a record
+    at or below last_record_number (since backwards-read returns newest
+    first, anything at or below that point means we've caught up).
+
+    Returns (events_oldest_to_newest, new_last_record_number).
+    """
     flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
     collected = []
     newest_seen = last_record_number
+    caught_up = False
+    batch_num = 0
 
-    events = win32evtlog.ReadEventLog(handle, flags, 0)
-    while events:
-        stop = False
-        for event in events:
-            if event.RecordNumber <= last_record_number:
-                stop = True
-                break
-            if event.EventID & 0xFFFF in EVENT_ID_MAP:
-                collected.append(event)
-            newest_seen = max(newest_seen, event.RecordNumber)
-        if stop:
-            break
+    while not caught_up:
         events = win32evtlog.ReadEventLog(handle, flags, 0)
+        batch_num += 1
+        if debug:
+            print(f"  [debug] batch #{batch_num}: ReadEventLog returned {len(events) if events else 0} raw event(s)")
 
+        if not events:
+            break  # no more events in the log at all
+
+        for event in events:
+            raw_id = event.EventID
+            masked_id = raw_id & 0xFFFF
+            if debug and batch_num == 1:
+                print(f"  [debug] record={event.RecordNumber} raw_event_id={raw_id} masked_id={masked_id} "
+                      f"source={event.SourceName} time={event.TimeGenerated}")
+
+            if event.RecordNumber <= last_record_number:
+                caught_up = True
+                break  # don't process this or anything older — already seen
+
+            newest_seen = max(newest_seen, event.RecordNumber)
+
+            if masked_id in EVENT_ID_MAP:
+                collected.append(event)
+
+        if batch_num > 50:
+            if debug:
+                print("  [debug] safety stop: 50 batches read without catching up")
+            break
+
+    # collected is newest-first (backwards read); reverse so we ship oldest-first
+    collected.reverse()
     return collected, newest_seen
 
 
@@ -144,6 +174,7 @@ def main():
     parser.add_argument("--api-key", required=True, help="Your Aegis AI API key (Settings -> API Key)")
     parser.add_argument("--api-url", default="http://127.0.0.1:8000", help="Aegis AI backend base URL")
     parser.add_argument("--interval", type=int, default=15, help="Seconds between polls")
+    parser.add_argument("--debug", action="store_true", help="Print detailed per-event diagnostics on the first batch each poll")
     args = parser.parse_args()
 
     print(f"Connecting to {LOG_TYPE} event log on {SERVER}...")
@@ -153,13 +184,23 @@ def main():
     flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
     initial = win32evtlog.ReadEventLog(handle, flags, 0)
     last_record_number = max((e.RecordNumber for e in initial), default=0)
+    win32evtlog.CloseEventLog(handle)
 
     print(f"Tailing from record #{last_record_number}. Polling every {args.interval}s. Ctrl+C to stop.")
     print(f"Shipping to {args.api_url}/ingest/logs")
 
     try:
         while True:
-            new_events, last_record_number = read_new_events(handle, last_record_number)
+            # Reopen the handle fresh each poll — Windows event log handles can
+            # return stale/cached results if kept open across long-running reads,
+            # so the reliable pattern is open -> read -> close every cycle.
+            handle = win32evtlog.OpenEventLog(SERVER, LOG_TYPE)
+            try:
+                new_events, last_record_number = read_new_events(handle, last_record_number, debug=args.debug)
+            finally:
+                win32evtlog.CloseEventLog(handle)
+
+            print(f"[poll] checked up to record #{last_record_number} — {len(new_events)} relevant event(s) found.")
             if new_events:
                 payloads = [event_to_payload(e) for e in new_events]
                 print(f"Found {len(payloads)} new relevant security event(s).")
@@ -167,8 +208,6 @@ def main():
             time.sleep(args.interval)
     except KeyboardInterrupt:
         print("Stopped.")
-    finally:
-        win32evtlog.CloseEventLog(handle)
 
 
 if __name__ == "__main__":

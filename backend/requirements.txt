@@ -9,3 +9,5 @@ python-dotenv
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
+pywin32
+requests

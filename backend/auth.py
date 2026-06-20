@@ -4,10 +4,11 @@ and FastAPI router with /auth/register and /auth/login endpoints.
 """
 
 import os
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -79,6 +80,25 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
+def get_user_by_api_key(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    db: Session = Depends(get_db),
+) -> User:
+    """Authenticates log-shipping agents via the X-API-Key header instead of
+    a JWT — agents aren't browser sessions and shouldn't need to log in."""
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="Missing X-API-Key header")
+    user = db.query(User).filter(User.api_key == x_api_key).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return user
+
+
+def generate_api_key() -> str:
+    """Generates a random API key for log-shipping agents, e.g. aegis_live_<32 hex chars>."""
+    return f"aegis_live_{secrets.token_hex(16)}"
+
+
 # ── Schemas ───────────────────────────────────────────────────────────────────
 class RegisterRequest(BaseModel):
     email: str
@@ -122,6 +142,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
         full_name=body.full_name,
         plan="free",
         created_at=datetime.utcnow(),
+        api_key=generate_api_key(),
     )
     db.add(user)
     db.commit()
@@ -137,6 +158,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
             "username": user.username,
             "full_name": user.full_name,
             "plan": user.plan,
+            "api_key": user.api_key,
         },
     }
 
@@ -146,6 +168,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not user.api_key:
+        user.api_key = generate_api_key()
+        db.commit()
 
     token = create_access_token({"sub": user.email})
     return {
@@ -157,6 +183,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             "username": user.username,
             "full_name": user.full_name,
             "plan": user.plan,
+            "api_key": user.api_key,
         },
     }
 
@@ -169,8 +196,20 @@ def get_me(current_user: User = Depends(get_current_user)):
         "username": current_user.username,
         "full_name": current_user.full_name,
         "plan": current_user.plan,
+        "api_key": current_user.api_key,
         "created_at": current_user.created_at.isoformat(),
     }
+
+
+@router.post("/regenerate-api-key")
+def regenerate_api_key(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Invalidates the old key and issues a new one."""
+    current_user.api_key = generate_api_key()
+    db.commit()
+    return {"api_key": current_user.api_key}
 
 
 @router.post("/change-password")

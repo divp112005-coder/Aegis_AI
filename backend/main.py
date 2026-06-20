@@ -1,13 +1,15 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+import json
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from pydantic import BaseModel
 
 from models import SessionLocal, Log, Alert, AnalystReport, User, BlockedIP, init_db
-from auth import router as auth_router, get_current_user
+from auth import router as auth_router, get_current_user, get_user_by_api_key
 
 app = FastAPI(title="Aegis AI", version="0.1.0")
 
@@ -328,4 +330,80 @@ def seed_demo_data(
         "attack_simulated": body.include_attack,
         "scenario_type": scenario_triggered,
         "total_alerts": alert_count,
+    }
+
+
+# ── Real log ingestion ──────────────────────────────────────────────────────
+# Authenticated via X-API-Key header (not user JWT), since log-shipping agents
+# are unattended processes, not browser sessions. See /auth/me for a user's key.
+
+class IngestEvent(BaseModel):
+    timestamp: Optional[str] = None  # ISO 8601; defaults to "now" if omitted
+    source_ip: str
+    username: Optional[str] = None
+    event_type: str  # login_success | login_failed | file_access | privilege_change | logout
+    raw: Optional[dict] = None  # original unparsed event, stored for audit/debugging
+
+VALID_EVENT_TYPES = {"login_success", "login_failed", "file_access", "privilege_change", "logout"}
+
+
+class IngestBatch(BaseModel):
+    events: List[IngestEvent]
+    source: str = "real"  # free-text label, e.g. "windows_event_log", "auth_log"
+
+
+def _geo_for_ip(ip: str) -> str:
+    from log_generator import geo_for_ip
+    return geo_for_ip(ip)
+
+
+@app.post("/ingest/logs")
+def ingest_logs(
+    body: IngestBatch,
+    db: Session = Depends(get_db),
+    agent_user: User = Depends(get_user_by_api_key),
+):
+    """
+    Real log ingestion endpoint for agents (e.g. the Windows Event Log
+    tailer in agent/windows_event_tailer.py). Accepts a batch of normalized
+    events and writes them as Log rows owned by the API-key's user.
+    """
+    if not body.events:
+        raise HTTPException(status_code=400, detail="events list cannot be empty")
+    if len(body.events) > 500:
+        raise HTTPException(status_code=400, detail="Max 500 events per batch")
+
+    inserted = 0
+    skipped = []
+
+    for i, event in enumerate(body.events):
+        if event.event_type not in VALID_EVENT_TYPES:
+            skipped.append({"index": i, "reason": f"invalid event_type: {event.event_type}"})
+            continue
+
+        try:
+            ts = datetime.fromisoformat(event.timestamp) if event.timestamp else datetime.utcnow()
+        except ValueError:
+            skipped.append({"index": i, "reason": f"invalid timestamp: {event.timestamp}"})
+            continue
+
+        log = Log(
+            owner_id=agent_user.id,
+            timestamp=ts,
+            source_ip=event.source_ip,
+            username=event.username,
+            event_type=event.event_type,
+            geo_location=_geo_for_ip(event.source_ip),
+            raw=json.dumps(event.raw) if event.raw else None,
+            source=body.source,
+        )
+        db.add(log)
+        inserted += 1
+
+    db.commit()
+
+    return {
+        "inserted": inserted,
+        "skipped": skipped,
+        "owner": agent_user.username,
     }

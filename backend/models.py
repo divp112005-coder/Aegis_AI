@@ -26,6 +26,7 @@ class User(Base):
     plan = Column(String, default="free")  # free / pro / enterprise
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
+    api_key = Column(String, unique=True, index=True, nullable=True)  # used by log-shipping agents, not browser auth
 
 
 class Log(Base):
@@ -39,6 +40,7 @@ class Log(Base):
     event_type = Column(String, index=True, nullable=False)  # e.g. login_success, login_failed
     geo_location = Column(String, nullable=True)
     raw = Column(Text, nullable=True)  # raw JSON string of the full log line
+    source = Column(String, default="simulated")  # "simulated" or e.g. "windows_event_log"
 
     owner = relationship("User")
 

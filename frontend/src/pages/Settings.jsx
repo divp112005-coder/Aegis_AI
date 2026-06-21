@@ -55,7 +55,7 @@ function SectionCard({ icon, title, children }) {
 
 /* ── Settings page ───────────────────────────────────────────────── */
 export default function Settings() {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   /* ── Password change state ── */
@@ -72,9 +72,13 @@ export default function Settings() {
   const [deleteStep, setDeleteStep] = useState('idle'); // 'idle' | 'confirm' | 'deleting' | 'error'
   const [deleteError, setDeleteError] = useState('');
 
-  /* ── API key state ── */
-  const MOCK_KEY = 'aegis_sk_live_4xB9mZpQrT8sKjL2vYnW6cDhE0oFuIa3';
+  /* ── API key state ──
+     Real key comes from the authenticated user object (user.api_key),
+     which /auth/me and /auth/login both return. No more mock value. */
+  const apiKey = user?.api_key || '';
   const [keyVisible, setKeyVisible] = useState(false);
+  const [regenStatus, setRegenStatus] = useState(''); // '' | 'loading' | 'error'
+  const [regenError, setRegenError] = useState('');
   const { copied, copy } = useCopy();
 
   /* ── Password validation ── */
@@ -120,6 +124,35 @@ export default function Settings() {
     }
   };
 
+  /* ── Regenerate API key ──
+     Calls the real backend endpoint, then refreshes the user object in
+     AuthContext so the new key shows up immediately without a re-login. */
+  const handleRegenerateKey = async () => {
+    setRegenStatus('loading');
+    setRegenError('');
+    try {
+      const res = await fetch(`${API_BASE}/auth/regenerate-api-key`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Failed to regenerate API key');
+      }
+      // Re-fetch /auth/me so the AuthContext user object (and this page) reflects the new key
+      if (refreshUser) {
+        await refreshUser();
+      } else {
+        // Fallback: AuthContext doesn't expose a refresh helper — reload to pick up the new key
+        window.location.reload();
+      }
+      setRegenStatus('');
+    } catch (err) {
+      setRegenStatus('error');
+      setRegenError(err.message);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (deleteStep === 'idle') {
       setDeleteStep('confirm');
@@ -144,7 +177,9 @@ export default function Settings() {
     }
   };
 
-  const maskedKey = MOCK_KEY.slice(0, 12) + '•'.repeat(20) + MOCK_KEY.slice(-6);
+  const maskedKey = apiKey
+    ? apiKey.slice(0, 12) + '•'.repeat(20) + apiKey.slice(-6)
+    : '';
 
   return (
     <>
@@ -285,11 +320,13 @@ export default function Settings() {
           {/* ── API Key ── */}
           <SectionCard icon="⬡" title="API Key">
             <p className="apikey-desc">
-              Use this key to authenticate requests to the Aegis AI REST API. Keep it secret — never expose it in client-side code.
+              Use this key to authenticate log-shipping agents (e.g. the Windows Event Log
+              tailer) with the Aegis AI ingestion API. Keep it secret — never expose it in
+              client-side code or commit it to a public repo.
             </p>
             <div className="apikey-box glass-glow">
               <span className="apikey-value">
-                {keyVisible ? MOCK_KEY : maskedKey}
+                {apiKey ? (keyVisible ? apiKey : maskedKey) : 'No API key on record — try logging out and back in.'}
               </span>
               <div className="apikey-actions">
                 <button
@@ -297,22 +334,44 @@ export default function Settings() {
                   id="apikey-toggle"
                   onClick={() => setKeyVisible((v) => !v)}
                   aria-label={keyVisible ? 'Hide API key' : 'Reveal API key'}
+                  disabled={!apiKey}
                 >
                   {keyVisible ? '🙈 Hide' : '👁 Reveal'}
                 </button>
                 <button
                   className="btn btn-ghost apikey-btn"
                   id="apikey-copy"
-                  onClick={() => copy(MOCK_KEY)}
+                  onClick={() => copy(apiKey)}
                   aria-label="Copy API key"
+                  disabled={!apiKey}
                 >
                   {copied ? '✓ Copied!' : '📋 Copy'}
                 </button>
               </div>
             </div>
-            <p className="apikey-note">
-              ⬡ This is a mock key for demonstration. Real key generation will be available in the Pro plan.
-            </p>
+
+            <div className="apikey-box glass-glow" style={{ marginTop: '0.75rem' }}>
+              <span className="apikey-desc" style={{ flex: 1 }}>
+                Regenerating immediately invalidates the old key — any running agents will
+                need to be restarted with the new one.
+              </span>
+              <div className="apikey-actions">
+                <button
+                  className="btn btn-outline apikey-btn"
+                  onClick={handleRegenerateKey}
+                  disabled={regenStatus === 'loading'}
+                >
+                  {regenStatus === 'loading' ? (
+                    <><span className="btn-spinner" /> Regenerating…</>
+                  ) : (
+                    '🔄 Regenerate Key'
+                  )}
+                </button>
+              </div>
+            </div>
+            {regenStatus === 'error' && (
+              <div className="pw-feedback pw-feedback-error">⚠ {regenError}</div>
+            )}
           </SectionCard>
 
           {/* ── Danger Zone ── */}

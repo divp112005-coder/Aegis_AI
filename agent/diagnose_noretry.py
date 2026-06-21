@@ -204,23 +204,10 @@ def main():
             # so the reliable pattern is open -> read -> close every cycle.
             try:
                 handle = win32evtlog.OpenEventLog(SERVER, LOG_TYPE)
-                time.sleep(0.2)  # brief settle delay — guards against a possible
-                                 # open/ready race on some Windows configurations
                 try:
-                    try:
-                        new_events, last_record_number = read_new_events(handle, last_record_number, debug=args.debug)
-                    except pywintypes.error as inner_e:
-                        # One retry within the same cycle: reopen and try again
-                        # immediately before giving up and waiting for the next poll.
-                        if args.debug:
-                            print(f"  [debug] first read attempt failed ({inner_e}), retrying once...")
-                        try:
-                            win32evtlog.CloseEventLog(handle)
-                        except pywintypes.error:
-                            pass
-                        handle = win32evtlog.OpenEventLog(SERVER, LOG_TYPE)
-                        time.sleep(0.2)
-                        new_events, last_record_number = read_new_events(handle, last_record_number, debug=args.debug)
+                    # NO RETRY, NO SETTLE DELAY — diagnostic build only, to test
+                    # whether a Defender exclusion alone resolves the handle error.
+                    new_events, last_record_number = read_new_events(handle, last_record_number, debug=args.debug)
                 finally:
                     try:
                         win32evtlog.CloseEventLog(handle)

@@ -152,6 +152,20 @@ def check_off_hours_login(session, owner_id: int):
 # ── Rule 4: Privilege escalation ─────────────────────────────────────────────
 
 def check_privilege_escalation(session, owner_id: int):
+    """
+    Flags a privilege_change shortly after a login_success for the same
+    account — but only when the source IP is external (not localhost / not
+    an internal office IP). Windows Event ID 4672 ("special privileges
+    assigned") fires on nearly every routine interactive logon — including
+    the machine's own normal logons by SYSTEM and the device owner — so
+    using it as a signal on its own, without the external-IP gate, produces
+    constant false positives on a single test machine.
+
+    In a real deployment this rule is most meaningful for network/remote
+    logons (Logon Type 3/10) from outside the trusted network escalating
+    privileges shortly after authenticating — that's the actual compromise
+    pattern this rule is meant to catch.
+    """
     cutoff = datetime.utcnow() - timedelta(minutes=SCAN_WINDOW_MINUTES)
     priv_changes = (
         session.query(Log)
@@ -177,11 +191,21 @@ def check_privilege_escalation(session, owner_id: int):
         )
         if not recent_login:
             continue
+
+        is_external_ip = change.source_ip != "127.0.0.1" and change.geo_location not in (None, "Internal-Office", "Unknown")
+
+        # Only alert when the source IP is external — the meaningful risk
+        # factor for this rule. Local/loopback privilege assignment (SYSTEM,
+        # the device owner's own account, etc.) is normal Windows background
+        # activity, not an attack signal.
+        if not is_external_ip:
+            continue
+
         if _alert_already_exists(session, owner_id, "privilege_escalation", change.source_ip, change.username):
             continue
         _create_alert(
             session, owner_id, "privilege_escalation", change.source_ip, change.username,
-            details=f'{{"login_at": "{recent_login.timestamp.isoformat()}", "escalation_at": "{change.timestamp.isoformat()}"}}',
+            details=f'{{"login_at": "{recent_login.timestamp.isoformat()}", "escalation_at": "{change.timestamp.isoformat()}", "external_ip": {str(is_external_ip).lower()}}}',
         )
 
 

@@ -3,39 +3,104 @@ import Navbar from '../components/Navbar';
 import './Docs.css';
 
 const SECTIONS = [
-  { id: 'overview',        label: 'Overview',         icon: '⬡' },
-  { id: 'quickstart',      label: 'Quick Start',       icon: <span className="nav-dot" /> },
-  { id: 'api-reference',   label: 'API Reference',     icon: <span className="nav-dot" /> },
-  { id: 'detection-rules', label: 'Detection Rules',   icon: <span className="nav-dot" /> },
-  { id: 'ai-analyst',      label: 'AI Analyst',        icon: <span className="nav-dot" /> },
-  { id: 'faq',             label: 'FAQ',               icon: <span className="nav-dot" /> },
+  { id: 'overview',        label: 'Overview',              icon: '⬡' },
+  { id: 'quickstart',      label: 'Quick Start',           icon: <span className="nav-dot" /> },
+  { id: 'api-reference',   label: 'API Reference',         icon: <span className="nav-dot" /> },
+  { id: 'detection-rules', label: 'Detection Rules',       icon: <span className="nav-dot" /> },
+  { id: 'api-keys',        label: 'API Keys & Ingestion',  icon: <span className="nav-dot" /> },
+  { id: 'ai-analyst',      label: 'AI Analyst',            icon: <span className="nav-dot" /> },
+  { id: 'faq',             label: 'FAQ',                   icon: <span className="nav-dot" /> },
 ];
 
 const API_ENDPOINTS = [
+  // ── Auth ──────────────────────────────────────────────────────────
+  {
+    method: 'POST',
+    path: '/auth/register',
+    auth: false,
+    authMethod: null,
+    description: 'Create a new account. Returns a JWT access token and a unique API key on success.',
+    params: [
+      { name: 'username', type: 'string', required: true,  desc: 'Desired username (body JSON)' },
+      { name: 'password', type: 'string', required: true,  desc: 'Account password (body JSON)' },
+    ],
+    response: '{ "access_token": "eyJ...", "token_type": "bearer", "api_key": "aegis_live_..." }',
+  },
+  {
+    method: 'POST',
+    path: '/auth/login',
+    auth: false,
+    authMethod: null,
+    description: 'Authenticate and receive a JWT access token plus your account API key.',
+    params: [
+      { name: 'username', type: 'string', required: true, desc: 'Account username (body JSON)' },
+      { name: 'password', type: 'string', required: true, desc: 'Account password (body JSON)' },
+    ],
+    response: '{ "access_token": "eyJ...", "token_type": "bearer", "api_key": "aegis_live_..." }',
+  },
+  {
+    method: 'GET',
+    path: '/auth/me',
+    auth: true,
+    authMethod: 'JWT',
+    description: 'Returns the current authenticated user\'s profile, including their API key.',
+    params: [],
+    response: '{ "id": 1, "username": "analyst", "api_key": "aegis_live_..." }',
+  },
+  {
+    method: 'POST',
+    path: '/auth/regenerate-api-key',
+    auth: true,
+    authMethod: 'JWT',
+    description: 'Invalidates the current API key and issues a new cryptographically-random one. Any agents using the old key must be reconfigured.',
+    params: [],
+    response: '{ "api_key": "aegis_live_..." }',
+  },
+  {
+    method: 'POST',
+    path: '/auth/change-password',
+    auth: true,
+    authMethod: 'JWT',
+    description: 'Change the account password. Requires the current password for verification.',
+    params: [
+      { name: 'current_password', type: 'string', required: true, desc: 'Existing password (body JSON)' },
+      { name: 'new_password',     type: 'string', required: true, desc: 'New password (body JSON)' },
+    ],
+    response: '{ "message": "Password updated successfully" }',
+  },
+  {
+    method: 'DELETE',
+    path: '/auth/me',
+    auth: true,
+    authMethod: 'JWT',
+    description: 'Permanently deletes the authenticated account and all data owned by it (logs, alerts, blocked IPs). Irreversible.',
+    params: [],
+    response: '{ "message": "Account deleted" }',
+  },
+  // ── Logs ──────────────────────────────────────────────────────────
   {
     method: 'GET',
     path: '/logs',
     auth: true,
-    description: 'Fetch paginated log entries. Supports filtering by severity, source IP, and time range.',
+    authMethod: 'JWT',
+    description: 'List log entries belonging to the authenticated user. Filterable by source_ip and event_type.',
     params: [
-      { name: 'page',     type: 'int',    required: false, desc: 'Page number (default: 1)' },
-      { name: 'limit',    type: 'int',    required: false, desc: 'Results per page (default: 50, max: 200)' },
-      { name: 'severity', type: 'string', required: false, desc: 'Filter by severity: low | medium | high | critical' },
-      { name: 'source',   type: 'string', required: false, desc: 'Filter by source IP address' },
-      { name: 'from',     type: 'ISO8601',required: false, desc: 'Start timestamp for range filter' },
-      { name: 'to',       type: 'ISO8601',required: false, desc: 'End timestamp for range filter' },
+      { name: 'source_ip',   type: 'string', required: false, desc: 'Filter by source IP address' },
+      { name: 'event_type',  type: 'string', required: false, desc: 'Filter by event type (e.g. login_failed)' },
+      { name: 'limit',       type: 'int',    required: false, desc: 'Results per page (default: 50)' },
     ],
-    response: '{ "logs": [...], "total": 1024, "page": 1, "pages": 21 }',
+    response: '{ "logs": [...], "total": 1024 }',
   },
+  // ── Alerts ────────────────────────────────────────────────────────
   {
     method: 'GET',
     path: '/alerts',
     auth: true,
-    description: 'List all security alerts generated by the detection engine, ordered by timestamp descending.',
+    authMethod: 'JWT',
+    description: 'List all security alerts for the authenticated user, ordered by timestamp descending. Filterable by status.',
     params: [
-      { name: 'status',   type: 'string', required: false, desc: 'Filter by status: open | approved | dismissed' },
-      { name: 'severity', type: 'string', required: false, desc: 'Filter by severity level' },
-      { name: 'limit',    type: 'int',    required: false, desc: 'Results per page (default: 20)' },
+      { name: 'status', type: 'string', required: false, desc: 'Filter by status: open | approved | dismissed' },
+      { name: 'limit',  type: 'int',    required: false, desc: 'Results per page (default: 20)' },
     ],
     response: '{ "alerts": [...], "total": 38 }',
   },
@@ -43,7 +108,8 @@ const API_ENDPOINTS = [
     method: 'GET',
     path: '/alerts/{id}',
     auth: true,
-    description: 'Retrieve full details of a single alert including AI analyst report, related log entries, and MITRE ATT&CK mapping.',
+    authMethod: 'JWT',
+    description: 'Retrieve full details of a single alert, including the AI analyst report, related log entries, and MITRE ATT&CK mapping.',
     params: [
       { name: 'id', type: 'int', required: true, desc: 'Alert ID (path parameter)' },
     ],
@@ -53,77 +119,94 @@ const API_ENDPOINTS = [
     method: 'POST',
     path: '/alerts/{id}/analyze',
     auth: true,
-    description: 'Trigger the AI Analyst agent to (re-)analyze an alert. The LLaMA 3.3 70B model generates a detailed report asynchronously.',
+    authMethod: 'JWT',
+    description: 'Trigger the AI analyst to (re-)analyze an alert. The Groq LLaMA 3.3 70B model generates a structured report.',
     params: [
       { name: 'id', type: 'int', required: true, desc: 'Alert ID (path parameter)' },
     ],
-    response: '{ "status": "queued", "alert_id": 42, "estimated_seconds": 8 }',
+    response: '{ "status": "queued", "alert_id": 42 }',
   },
   {
     method: 'POST',
-    path: '/alerts/{id}/approve',
+    path: '/alerts/{id}/status',
     auth: true,
-    description: 'Mark an alert as approved by a human analyst. Records the analyst\'s username and timestamp.',
-    params: [
-      { name: 'id', type: 'int', required: true, desc: 'Alert ID (path parameter)' },
-    ],
-    response: '{ "status": "approved", "alert_id": 42, "analyst": "jane.doe" }',
-  },
-  {
-    method: 'POST',
-    path: '/alerts/{id}/dismiss',
-    auth: true,
-    description: 'Dismiss an alert as a false positive. Optionally include a reason in the request body.',
+    authMethod: 'JWT',
+    description: 'Approve or dismiss an alert. Approving records a simulated IP block entry — no real firewall or network device is modified.',
     params: [
       { name: 'id',     type: 'int',    required: true,  desc: 'Alert ID (path parameter)' },
-      { name: 'reason', type: 'string', required: false, desc: 'Dismissal reason (body JSON)' },
+      { name: 'action', type: 'string', required: true,  desc: '"approve" or "dismiss" (body JSON)' },
+      { name: 'reason', type: 'string', required: false, desc: 'Optional reason / notes (body JSON)' },
     ],
-    response: '{ "status": "dismissed", "alert_id": 42 }',
+    response: '{ "status": "approved", "alert_id": 42, "simulated_block_created": true }',
+  },
+  // ── Blocked IPs ───────────────────────────────────────────────────
+  {
+    method: 'GET',
+    path: '/blocked-ips',
+    auth: true,
+    authMethod: 'JWT',
+    description: 'List simulated IP block records for the authenticated user. These are records only — no firewall rules are created.',
+    params: [],
+    response: '{ "blocked_ips": [...] }',
   },
   {
     method: 'POST',
-    path: '/auth/login',
-    auth: false,
-    description: 'Authenticate a user and receive a JWT Bearer token. Token expires in 24 hours.',
+    path: '/blocked-ips/{id}/unblock',
+    auth: true,
+    authMethod: 'JWT',
+    description: 'Remove a simulated IP block record. As with blocking, this does not interact with any real network device.',
     params: [
-      { name: 'username', type: 'string', required: true, desc: 'Account username (body JSON)' },
-      { name: 'password', type: 'string', required: true, desc: 'Account password (body JSON)' },
+      { name: 'id', type: 'int', required: true, desc: 'Block record ID (path parameter)' },
     ],
-    response: '{ "access_token": "eyJ...", "token_type": "bearer" }',
+    response: '{ "message": "Unblocked" }',
+  },
+  // ── Demo & Ingest ─────────────────────────────────────────────────
+  {
+    method: 'POST',
+    path: '/demo/seed',
+    auth: true,
+    authMethod: 'JWT',
+    description: 'Generate a batch of sample log data for the authenticated user and trigger one random attack scenario (brute force, geo anomaly, etc.) through the full detection + AI pipeline.',
+    params: [],
+    response: '{ "logs_created": 120, "scenario": "brute_force", "alert_id": 55 }',
   },
   {
     method: 'POST',
-    path: '/auth/register',
-    auth: false,
-    description: 'Register a new user account. Returns a JWT token immediately upon success.',
+    path: '/ingest/logs',
+    auth: true,
+    authMethod: 'API_KEY',
+    description: 'Real log ingestion endpoint for unattended agents. Accepts a batch of normalized log events and runs them through the same detection and AI pipeline as demo data. Authenticated via X-API-Key header — not JWT.',
     params: [
-      { name: 'username', type: 'string', required: true, desc: 'Desired username (body JSON)' },
-      { name: 'password', type: 'string', required: true, desc: 'Account password (body JSON)' },
+      { name: 'events', type: 'array', required: true, desc: 'Array of normalized log event objects (body JSON)' },
     ],
-    response: '{ "access_token": "eyJ...", "token_type": "bearer" }',
+    response: '{ "ingested": 15, "alerts_triggered": 1 }',
   },
 ];
 
 const FAQ_ITEMS = [
   {
     q: 'How does the detection engine work?',
-    a: 'Aegis AI runs a detection loop every 10 seconds, scanning incoming log entries against a library of configurable rules. When a rule fires (e.g. ≥ 5 failed logins from the same IP in 60 s), an alert is created and queued for AI analysis.',
+    a: 'Aegis AI runs a detection loop every 10 seconds, scanning incoming log entries against 5 built-in rules. When a rule fires (e.g. ≥ 5 failed logins from the same IP in 60 s), an alert is created and queued for AI analysis via Groq.',
   },
   {
     q: 'What AI model powers the analyst?',
-    a: 'The AI Analyst uses LLaMA 3.3 70B via the Groq API. The model receives a structured prompt containing the alert metadata, matched log lines, and source IP context, then returns a JSON-structured report with severity, MITRE mapping, and recommended action.',
+    a: "Groq's LLaMA 3.3 70B Versatile model, accessed via Groq's OpenAI-compatible API. The model receives a structured prompt with alert metadata, matched log lines, and source IP context, and returns a JSON report with severity, MITRE mapping, and a recommended action.",
   },
   {
-    q: 'Is there a rate limit on the API?',
-    a: 'Free tier: 60 requests/minute. Pro: 300 requests/minute. Enterprise: unlimited. All limits are applied per JWT token.',
+    q: 'Is the IP blocking real?',
+    a: 'No. Approving an alert records a simulated block entry in the database for demonstration purposes. No firewall rule, ACL, or network device is modified at any point.',
   },
   {
-    q: 'Can I ingest logs via the API?',
-    a: 'Log ingestion via API is on the roadmap for Q3 2026. Currently, logs are ingested from a syslog-format file mounted at /logs/auth.log on the backend container.',
+    q: 'Can I ingest my own real logs?',
+    a: 'Yes. Use the POST /ingest/logs endpoint with your account API key (X-API-Key header). The included Windows Event Log tailing agent (agent/windows_event_tailer.py) is one ready-to-use client — it reads real Windows Security Event Log entries and ships them through the same detection and AI pipeline as demo data.',
   },
   {
-    q: 'How do I rotate my API token?',
-    a: 'POST /auth/login again with your credentials to receive a fresh JWT. Your old token remains valid until its 24-hour TTL expires. Force-expiry via the Settings page will be available in v1.2.',
+    q: 'How do I get my API key?',
+    a: 'Your API key is issued automatically when you register. You can view it on the Settings page or via GET /auth/me. If you need to rotate it, use POST /auth/regenerate-api-key — this invalidates the old key immediately.',
+  },
+  {
+    q: 'Is this a production-hardened commercial product?',
+    a: 'No. Aegis AI is a portfolio and demonstration platform. It is built with real technology (FastAPI, PostgreSQL, Groq inference, JWT auth, per-user data isolation) and accepts real log data, but it is not operated as a hardened commercial SIEM.',
   },
 ];
 
@@ -149,6 +232,22 @@ function CodeBlock({ code, language = 'bash' }) {
 
 function MethodBadge({ method }) {
   return <span className={`method-badge method-${method.toLowerCase()}`}>{method}</span>;
+}
+
+function AuthMethodBadge({ authMethod }) {
+  if (!authMethod) return null;
+  if (authMethod === 'API_KEY') {
+    return (
+      <span className="auth-badge auth-badge-apikey">
+        🔑 X-API-Key
+      </span>
+    );
+  }
+  return (
+    <span className="auth-badge">
+      🔒 JWT Bearer
+    </span>
+  );
 }
 
 function FaqItem({ q, a }) {
@@ -242,32 +341,39 @@ export default function Docs() {
               Aegis AI <span className="gradient-text">Documentation</span>
             </h1>
             <p className="docs-lead">
-              Aegis AI is an AI-powered Security Operations Centre (SOC) platform. It combines a
-              real-time log detection engine with an autonomous LLaMA 3.3 70B analyst agent that
-              automatically triages, explains, and recommends actions for every alert — so your team
-              can make fast, confident decisions.
+              Aegis AI is a multi-tenant SIEM platform with an AI analyst agent. It combines a
+              real-time log detection engine with a LLaMA 3.3 70B analyst that automatically
+              triages, explains, and recommends actions for every alert — so your team can make
+              fast, confident decisions.
             </p>
 
             <div className="info-cards">
               <div className="info-card glass-glow">
                 <div className="info-card-icon">⬡</div>
                 <div>
-                  <strong>Real-time</strong>
-                  <p>Detection engine runs every 10 seconds</p>
+                  <strong>Multi-tenant</strong>
+                  <p>Full per-user data isolation — every account sees only its own logs and alerts</p>
                 </div>
               </div>
               <div className="info-card glass-glow">
                 <div className="info-card-icon">⬡</div>
                 <div>
-                  <strong>LLaMA 3.3 70B</strong>
-                  <p>Every alert gets full AI analysis</p>
+                  <strong>Groq LLaMA 3.3 70B</strong>
+                  <p>Every alert gets a structured AI analysis report</p>
+                </div>
+              </div>
+              <div className="info-card glass-glow">
+                <div className="info-card-icon">⬡</div>
+                <div>
+                  <strong>Real log ingestion</strong>
+                  <p>Accepts both simulated demo data and live Windows Event Log entries</p>
                 </div>
               </div>
               <div className="info-card glass-glow">
                 <div className="info-card-icon">⬡</div>
                 <div>
                   <strong>MITRE ATT&CK</strong>
-                  <p>Auto-mapped on every alert</p>
+                  <p>All 5 detection rules are mapped to ATT&CK techniques</p>
                 </div>
               </div>
             </div>
@@ -277,8 +383,9 @@ export default function Docs() {
               <div>
                 <strong>Architecture at a glance</strong>
                 <p>
-                  FastAPI backend · SQLite/Postgres storage · Groq AI inference ·
-                  React + Vite frontend · Docker Compose deployment
+                  FastAPI + PostgreSQL backend · React + Vite frontend · JWT authentication
+                  with full per-user data isolation · Groq AI inference (LLaMA 3.3 70B) ·
+                  Docker Compose deployment · Windows Event Log tailing agent for real data ingestion
                 </p>
               </div>
             </div>
@@ -309,7 +416,7 @@ cp backend/.env.example backend/.env`} />
             <p className="docs-body">Open <code className="inline-code">backend/.env</code> and set:</p>
             <CodeBlock language="env" code={`GROQ_API_KEY=gsk_your_key_here
 SECRET_KEY=change_me_to_a_random_string
-DATABASE_URL=sqlite:///./aegis.db`} />
+DATABASE_URL=postgresql://aegis:aegis@db:5432/aegis`} />
 
             <h3 className="docs-h3">3 · Start with Docker Compose</h3>
             <CodeBlock language="bash" code={`docker compose up --build
@@ -319,14 +426,14 @@ DATABASE_URL=sqlite:///./aegis.db`} />
 # API docs  → http://localhost:8000/docs`} />
 
             <h3 className="docs-h3">4 · Authenticate via the API</h3>
-            <CodeBlock language="bash" code={`# Register a new account
+            <CodeBlock language="bash" code={`# Register a new account — returns JWT + API key
 curl -X POST http://127.0.0.1:8000/auth/register \\
   -H "Content-Type: application/json" \\
   -d '{"username": "analyst", "password": "s3cur3!"}'
 
-# → {"access_token": "eyJ...", "token_type": "bearer"}
+# → {"access_token": "eyJ...", "token_type": "bearer", "api_key": "aegis_live_..."}
 
-# Use the token in subsequent requests
+# Use the JWT for dashboard / browser requests
 export TOKEN="eyJ..."
 curl http://127.0.0.1:8000/alerts \\
   -H "Authorization: Bearer $TOKEN"`} />
@@ -341,11 +448,25 @@ curl http://127.0.0.1:8000/alerts \\
               API Reference
             </div>
             <h2 className="docs-h2">REST API</h2>
-            <p className="docs-body">
-              All endpoints are served from <code className="inline-code">http://127.0.0.1:8000</code>.
-              Protected endpoints require an <code className="inline-code">Authorization: Bearer &lt;token&gt;</code> header
-              obtained from <code className="inline-code">POST /auth/login</code>.
-            </p>
+
+            {/* Auth methods note */}
+            <div className="auth-methods-note glass-glow">
+              <span className="auth-note-icon">🔐</span>
+              <div>
+                <strong>Two authentication methods</strong>
+                <ul className="auth-methods-list">
+                  <li>
+                    <code className="inline-code">Authorization: Bearer &lt;token&gt;</code>
+                    {' '}— <strong>JWT</strong> issued at login/register. Used by the browser dashboard for all interactive requests.
+                  </li>
+                  <li>
+                    <code className="inline-code">X-API-Key: aegis_live_...</code>
+                    {' '}— <strong>API key</strong> issued alongside the JWT. Used by unattended log-shipping agents (e.g. the Windows Event Log tailer) that run without a browser session. Only required for <code className="inline-code">POST /ingest/logs</code>.
+                  </li>
+                </ul>
+                <p className="auth-note-footer">These are separate credentials serving different purposes — you do not need to choose one over the other.</p>
+              </div>
+            </div>
 
             <div className="api-base-url glass">
               <span className="api-base-label">Base URL</span>
@@ -358,11 +479,7 @@ curl http://127.0.0.1:8000/alerts \\
                   <div className="endpoint-header">
                     <MethodBadge method={ep.method} />
                     <code className="endpoint-path">{ep.path}</code>
-                    {ep.auth && (
-                      <span className="auth-badge">
-                        🔒 Auth required
-                      </span>
-                    )}
+                    {ep.auth && <AuthMethodBadge authMethod={ep.authMethod} />}
                   </div>
 
                   <p className="endpoint-desc">{ep.description}</p>
@@ -415,9 +532,9 @@ curl http://127.0.0.1:8000/alerts \\
             </div>
             <h2 className="docs-h2">How alerts are generated</h2>
             <p className="docs-body">
-              Aegis AI ships with a set of built-in detection rules. Each rule defines a pattern to
-              match against log lines, a threshold, and a time window. When a rule fires, an alert is
-              created and queued for AI analysis.
+              The detection engine runs every 10 seconds and evaluates all incoming log entries
+              against 5 built-in rules. When a rule fires, an alert is created and immediately
+              queued for AI analysis.
             </p>
 
             <div className="rules-grid">
@@ -427,32 +544,40 @@ curl http://127.0.0.1:8000/alerts \\
                   tag: 'T1110',
                   color: 'red',
                   icon: '🔨',
-                  desc: 'Detects ≥ 5 failed SSH/login attempts from the same source IP within a 60-second window.',
-                  threshold: '5 failures / 60 s',
+                  desc: '5 or more failed login events from the same source IP within a 1-minute window.',
+                  threshold: '≥ 5 failures / 60 s',
                 },
                 {
-                  name: 'Port Scan',
-                  tag: 'T1046',
+                  name: 'Geo Anomaly',
+                  tag: 'T1078',
                   color: 'amber',
-                  icon: '🔍',
-                  desc: 'Flags connections to ≥ 15 distinct ports from the same source IP within a 30-second window.',
-                  threshold: '15 ports / 30 s',
+                  icon: '🌍',
+                  desc: 'Successful login from a country or region not seen for that user in the past 30 days.',
+                  threshold: 'New location / 30-day baseline',
                 },
                 {
-                  name: 'Anomalous Login Time',
+                  name: 'Off-Hours Login',
                   tag: 'T1078',
                   color: 'lavender',
                   icon: '🕑',
-                  desc: 'Alerts on successful logins occurring between 00:00–05:00 local time for accounts with no prior night activity.',
-                  threshold: 'Login 00:00–05:00',
+                  desc: 'Successful login occurring between 00:00–05:00 UTC, regardless of prior activity.',
+                  threshold: 'Login 00:00–05:00 UTC',
                 },
                 {
                   name: 'Privilege Escalation',
-                  tag: 'T1068',
+                  tag: 'T1078.003 / T1098',
                   color: 'rose',
                   icon: '⬆️',
-                  desc: 'Detects sudo or su usage followed by a sensitive file access within 120 seconds.',
-                  threshold: 'sudo → sensitive / 120 s',
+                  desc: 'A privilege change event shortly after login, originating from a non-local (external) IP address.',
+                  threshold: 'Privilege change + external IP',
+                },
+                {
+                  name: 'Impossible Travel',
+                  tag: 'T1078',
+                  color: 'teal',
+                  icon: '✈️',
+                  desc: 'The same user account logs in from two geographically distant locations within 10 minutes — physically impossible to travel between.',
+                  threshold: 'Same user, 2 distant logins / 10 min',
                 },
               ].map((rule) => (
                 <div key={rule.name} className="rule-card glass-glow">
@@ -465,31 +590,90 @@ curl http://127.0.0.1:8000/alerts \\
                   </div>
                   <p className="rule-desc">{rule.desc}</p>
                   <div className="rule-threshold glass">
-                    <span className="threshold-label">Threshold</span>
+                    <span className="threshold-label">Condition</span>
                     <code className="threshold-value">{rule.threshold}</code>
                   </div>
                 </div>
               ))}
             </div>
+          </section>
 
-            <h3 className="docs-h3">Custom rules (Pro &amp; Enterprise)</h3>
+          <div className="docs-divider" />
+
+          {/* ── API Keys & Real Data Ingestion ─── */}
+          <section id="api-keys" className="docs-section">
+            <div className="section-eyebrow">
+              <span className="eyebrow-dot" />
+              API Keys &amp; Real Data Ingestion
+            </div>
+            <h2 className="docs-h2">Shipping real logs to Aegis AI</h2>
             <p className="docs-body">
-              Custom rules are defined in YAML and hot-reloaded by the detection engine without a
-              restart. Below is the schema:
+              Every account is issued a unique, cryptographically-random API key at registration.
+              This key follows the format <code className="inline-code">aegis_live_</code> + 32 hex
+              characters and is viewable (and regenerable) on the Settings page.
             </p>
-            <CodeBlock language="yaml" code={`# aegis-rules.yml
-rules:
-  - name: "Repeated sudo failures"
-    mitre: "T1068"
-    severity: high
-    pattern:
-      log_type: auth
-      match: "sudo.*incorrect password"
-    threshold:
-      count: 3
-      window_seconds: 120
-      group_by: source_ip
-    action: alert`} />
+
+            <div className="info-cards" style={{ marginBottom: '1.5rem' }}>
+              <div className="info-card glass-glow">
+                <div className="info-card-icon">🔑</div>
+                <div>
+                  <strong>Agents only</strong>
+                  <p>The API key is for log-shipping agents. It is never used for browser login — that uses the JWT.</p>
+                </div>
+              </div>
+              <div className="info-card glass-glow">
+                <div className="info-card-icon">🔄</div>
+                <div>
+                  <strong>Rotatable</strong>
+                  <p>Regenerate at any time from Settings or via POST /auth/regenerate-api-key. The old key is invalidated immediately.</p>
+                </div>
+              </div>
+              <div className="info-card glass-glow">
+                <div className="info-card-icon">🪟</div>
+                <div>
+                  <strong>Windows Event Log agent</strong>
+                  <p>A ready-to-use Python agent that tails the Windows Security Event Log and ships events in real time.</p>
+                </div>
+              </div>
+            </div>
+
+            <h3 className="docs-h3">Running the Windows Event Log agent</h3>
+            <p className="docs-body">
+              The included agent (<code className="inline-code">agent/windows_event_tailer.py</code>) reads
+              real Windows Security Event Log entries — logon, logoff, and privilege change events —
+              normalizes them, and posts them to <code className="inline-code">POST /ingest/logs</code> using
+              your account's API key. The ingested events pass through the same 5-rule detection engine
+              and Groq AI pipeline as demo data.
+            </p>
+            <CodeBlock language="bash" code={`# Run on the Windows machine you want to monitor
+python agent/windows_event_tailer.py --api-key aegis_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# The agent will continuously tail the Security Event Log
+# and ship normalized events to the Aegis AI backend.`} />
+
+            <h3 className="docs-h3">What the agent sends</h3>
+            <CodeBlock language="json" code={`// Example normalized event payload (one item in the "events" array)
+{
+  "event_id": 4625,
+  "event_type": "login_failed",
+  "source_ip": "192.168.1.50",
+  "username": "administrator",
+  "timestamp": "2026-06-21T10:15:30Z",
+  "hostname": "WORKSTATION-01",
+  "raw": "An account failed to log on..."
+}`} />
+
+            <div className="ai-note glass-glow">
+              <span className="ai-note-icon">⬡</span>
+              <div>
+                <strong>Same pipeline, real data</strong>
+                <p>
+                  Log events ingested via the agent are stored under your account and processed
+                  identically to demo data — the same detection rules run, the same AI model
+                  analyzes triggered alerts, and the same dashboard surfaces results.
+                </p>
+              </div>
+            </div>
           </section>
 
           <div className="docs-divider" />
@@ -504,21 +688,22 @@ rules:
             <p className="docs-body">
               When an alert is created (or re-analyzed via <code className="inline-code">POST /alerts/{'{id}'}/analyze</code>),
               Aegis AI submits a structured prompt to LLaMA 3.3 70B via the Groq API. The model
-              returns a JSON-structured report that is stored alongside the alert.
+              returns a JSON-structured report that is stored alongside the alert and displayed in the dashboard.
             </p>
 
             <div className="ai-pipeline glass">
               {[
-                { step: '1', label: 'Alert created', icon: '🚨' },
-                { step: '2', label: 'Context fetched', icon: '📋' },
-                { step: '3', label: 'LLaMA 3.3 70B', icon: '🤖' },
-                { step: '4', label: 'Report stored', icon: '📊' },
-                { step: '5', label: 'Analyst reviews', icon: '👤' },
+                { step: '1', label: 'Log Ingestion',          icon: '📥', sub: 'real or simulated' },
+                { step: '2', label: 'Detection Engine',       icon: '🔍', sub: '5 rules, 10 s interval' },
+                { step: '3', label: 'Groq LLaMA 3.3 70B',    icon: '🤖', sub: 'AI analysis' },
+                { step: '4', label: 'Structured Report',      icon: '📊', sub: 'severity, MITRE, action' },
+                { step: '5', label: 'Dashboard',              icon: '👤', sub: 'analyst reviews' },
               ].map((s, i, arr) => (
                 <div key={s.step} className="pipeline-step">
                   <div className="pipeline-node">
                     <span className="pipeline-icon">{s.icon}</span>
                     <span className="pipeline-label">{s.label}</span>
+                    {s.sub && <span className="pipeline-sub">{s.sub}</span>}
                   </div>
                   {i < arr.length - 1 && <span className="pipeline-arrow">→</span>}
                 </div>
@@ -527,9 +712,8 @@ rules:
 
             <h3 className="docs-h3">Sample AI report structure</h3>
             <CodeBlock language="json" code={`{
-  "summary": "Multiple failed SSH attempts detected from 45.155.205.233 (NL) targeting the 'admin' account. Pattern consistent with automated credential stuffing.",
+  "summary": "Multiple failed login attempts detected from 45.155.205.233 (NL) targeting the 'admin' account. Pattern consistent with automated credential stuffing.",
   "severity": "HIGH",
-  "confidence": 0.94,
   "mitre": {
     "technique": "T1110",
     "name": "Brute Force",
@@ -542,8 +726,8 @@ rules:
     "attempt_count": 6,
     "window_seconds": 52
   },
-  "recommended_action": "Block 45.155.205.233 at the firewall level and enable MFA on the admin account. Consider reviewing SSH access policies.",
-  "analyst_notes": "Foreign IP with no prior legitimate access history. Privileged account targeted. High likelihood of malicious intent."
+  "recommended_action": "Block 45.155.205.233 at the firewall level and enable MFA on the admin account.",
+  "analyst_notes": "Foreign IP with no prior legitimate access history. Privileged account targeted."
 }`} />
 
             <div className="ai-note glass-glow">
@@ -552,8 +736,8 @@ rules:
                 <strong>Human-in-the-loop by design</strong>
                 <p>
                   The AI <em>recommends</em> — your analyst decides. Every alert requires explicit
-                  approval or dismissal before any action is recorded. No automated blocking occurs
-                  without human confirmation.
+                  approval or dismissal before any action is recorded. Approving an alert creates a
+                  simulated block record; no automated firewall change occurs.
                 </p>
               </div>
             </div>
@@ -597,7 +781,7 @@ rules:
               <span className="brand-icon">⬡</span>
               <span className="gradient-text" style={{ fontWeight: 700 }}>Aegis AI</span>
             </div>
-            <p className="footer-copy">© 2026 Aegis AI. Built with FastAPI, React, and LLaMA 3.3.</p>
+            <p className="footer-copy">© 2026 Aegis AI. Built with FastAPI, PostgreSQL, React, and LLaMA 3.3 70B.</p>
             <div className="footer-links">
               <a href="/docs">Docs</a>
               <a href="/pricing">Pricing</a>

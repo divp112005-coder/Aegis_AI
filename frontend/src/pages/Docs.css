@@ -408,7 +408,11 @@
 }
 
 .endpoint-card:hover {
-  box-shadow: 0 6px 32px rgba(201, 79, 120, 0.10), inset 0 1px 0 rgba(255,255,255,0.92);
+  box-shadow: 0 6px 32px rgba(201, 79, 120, 0.12);
+}
+
+[data-theme="dark"] .endpoint-card:hover {
+  box-shadow: 0 6px 32px rgba(220, 80, 130, 0.15);
 }
 
 .endpoint-header {
@@ -885,6 +889,73 @@
 
 .footer-links a:hover {
   color: var(--rose);
+}
+
+/* ── Auth methods note ────────────────────────────────────────────── */
+.auth-methods-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.1rem 1.4rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+}
+
+.auth-note-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.auth-methods-note strong {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+  margin-bottom: 0.6rem;
+}
+
+.auth-methods-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.auth-methods-list li {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.auth-note-footer {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── API key auth badge variant ───────────────────────────────────── */
+.auth-badge-apikey {
+  color: var(--lavender) !important;
+  background: rgba(139, 110, 190, 0.12) !important;
+  border-color: rgba(139, 110, 190, 0.28) !important;
+}
+
+/* ── Pipeline sub-label ───────────────────────────────────────────── */
+.pipeline-sub {
+  font-size: 0.63rem;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  font-style: italic;
+}
+
+/* ── Teal MITRE badge (Impossible Travel) ─────────────────────────── */
+.mitre-teal {
+  background: rgba(20, 160, 160, 0.13);
+  color: #14b8b8;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────── */

@@ -208,6 +208,10 @@ const FAQ_ITEMS = [
     q: 'Is this a production-hardened commercial product?',
     a: 'No. Aegis AI is a portfolio and demonstration platform. It is built with real technology (FastAPI, PostgreSQL, Groq inference, JWT auth, per-user data isolation) and accepts real log data, but it is not operated as a hardened commercial SIEM.',
   },
+  {
+    q: 'What is the Experimental Packet Monitoring feature?',
+    a: 'Packet monitoring is an opt-in, experimental capability powered by the scapy Python library. It passively sniffs live traffic on a chosen network interface and extracts basic metadata — source/destination IP, protocol (TCP/UDP/DNS), destination port, and TCP flags. No payload data or packet content is ever captured or stored, so there is no privacy-sensitive deep packet inspection. On Windows, it additionally requires Npcap (https://npcap.com) to be installed and must be run as Administrator for raw socket access. The captured metadata feeds two heuristic detection rules: SYN flood (T1498) and DNS tunneling (T1071.004).',
+  },
 ];
 
 function CodeBlock({ code, language = 'bash' }) {
@@ -579,12 +583,47 @@ curl http://127.0.0.1:8000/alerts \\
                   desc: 'The same user account logs in from two geographically distant locations within 10 minutes — physically impossible to travel between.',
                   threshold: 'Same user, 2 distant logins / 10 min',
                 },
+                {
+                  name: 'SYN Flood',
+                  tag: 'T1498',
+                  color: 'red',
+                  icon: '🌊',
+                  desc: 'High volume of TCP packets from a single source IP, consistent with a volumetric SYN flood / Network Denial of Service attack. Requires the scapy packet monitor agent.',
+                  threshold: '≥ 100 packets / 60 s',
+                  experimental: true,
+                },
+                {
+                  name: 'DNS Tunneling',
+                  tag: 'T1071.004',
+                  color: 'amber',
+                  icon: '🕵️',
+                  desc: 'High frequency of DNS requests to port 53 from a single source, indicating potential data exfiltration or C2 communication hidden inside DNS traffic. Requires the scapy packet monitor agent.',
+                  threshold: '≥ 50 queries / 60 s',
+                  experimental: true,
+                },
               ].map((rule) => (
                 <div key={rule.name} className="rule-card glass-glow">
                   <div className="rule-header">
                     <span className="rule-icon">{rule.icon}</span>
                     <div>
-                      <div className="rule-name">{rule.name}</div>
+                      <div className="rule-name">
+                        {rule.name}
+                        {rule.experimental && (
+                          <span style={{
+                            marginLeft: '0.5rem',
+                            fontSize: '0.62rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.06em',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '4px',
+                            background: 'rgba(139,92,246,0.15)',
+                            color: '#a78bfa',
+                            border: '1px solid rgba(139,92,246,0.3)',
+                            verticalAlign: 'middle',
+                            textTransform: 'uppercase',
+                          }}>Experimental</span>
+                        )}
+                      </div>
                       <div className={`rule-mitre mitre-${rule.color}`}>{rule.tag}</div>
                     </div>
                   </div>

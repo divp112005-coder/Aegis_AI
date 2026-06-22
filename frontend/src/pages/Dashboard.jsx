@@ -7,7 +7,7 @@ import './Dashboard.css';
 const API_BASE = 'http://127.0.0.1:8000';
 
 /* ── Network alert classification ───────────────────────────────────── */
-const NETWORK_ALERT_TYPES = new Set(['port_scan', 'suspicious_port', 'connection_volume']);
+const NETWORK_ALERT_TYPES = new Set(['port_scan', 'suspicious_port', 'connection_volume', 'syn_flood', 'dns_tunneling']);
 const SUSPICIOUS_PORTS    = new Set([4444, 31337, 1337, 6666, 6667, 12345, 54321, 8081, 9001, 3389, 5900, 23]);
 
 const isNetworkAlert = (type) => NETWORK_ALERT_TYPES.has(type);
@@ -31,6 +31,10 @@ const DETAIL_FIELD_LABELS = {
   window_minutes:         'Detection Window',
   protocol:               'Protocol',
   remote_ip:              'Remote IP',
+  // Packet-capture alert fields (syn_flood / dns_tunneling)
+  packet_count:           'Packet Count',
+  dns_query_count:        'DNS Queries',
+  heuristic:              'Heuristic Rule',
 };
 
 function AlertDetailsSection({ details, alertType }) {
@@ -545,6 +549,7 @@ export default function Dashboard() {
   const [seedResult, setSeedResult] = useState(null);
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' | 'blocked-ips'
   const [toasts, setToasts] = useState([]);
+  const [clearStatus, setClearStatus] = useState('idle'); // 'idle' | 'confirm' | 'clearing' | 'done'
   const intervalRef = useRef(null);
 
   /* ── Toast helpers ─────────────────────────────────────────────── */
@@ -630,6 +635,36 @@ export default function Dashboard() {
     } catch (err) {
       setSeedStatus('error');
       setTimeout(() => setSeedStatus('idle'), 3000);
+    }
+  };
+
+  const clearAlerts = async () => {
+    // Two-click safety: first click → confirm state; second click → execute
+    if (clearStatus === 'idle') {
+      setClearStatus('confirm');
+      setTimeout(() => setClearStatus((s) => (s === 'confirm' ? 'idle' : s)), 4000);
+      return;
+    }
+    if (clearStatus !== 'confirm') return;
+    setClearStatus('clearing');
+    setSelectedId(null);
+    try {
+      const res = await fetch(`${API_BASE}/alerts`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Clear failed');
+      const data = await res.json();
+      pushToast({
+        type: 'info',
+        icon: '🗑️',
+        message: `${data.deleted} alert${data.deleted !== 1 ? 's' : ''} cleared`,
+      });
+      setAlerts([]);
+      setClearStatus('done');
+      setTimeout(() => setClearStatus('idle'), 3000);
+    } catch {
+      setClearStatus('idle');
     }
   };
 
@@ -762,6 +797,28 @@ export default function Dashboard() {
                   <span className="toolbar-icon">⚡</span>
                   <h3>Alert Feed</h3>
                   <span className="alert-count">{filteredAlerts.length}</span>
+                  {alerts.length > 0 && (
+                    <button
+                      className={`btn-clear-alerts${
+                        clearStatus === 'confirm'  ? ' btn-clear-confirm'  :
+                        clearStatus === 'clearing' ? ' btn-clear-loading'  :
+                        clearStatus === 'done'     ? ' btn-clear-done'     : ''
+                      }`}
+                      onClick={clearAlerts}
+                      disabled={clearStatus === 'clearing'}
+                      title={clearStatus === 'confirm' ? 'Click again to confirm — this cannot be undone' : 'Clear all alerts'}
+                    >
+                      {clearStatus === 'clearing' ? (
+                        <><span className="btn-spinner seed-spinner" />Clearing…</>
+                      ) : clearStatus === 'confirm' ? (
+                        <>⚠ Confirm clear?</>
+                      ) : clearStatus === 'done' ? (
+                        <>✓ Cleared</>
+                      ) : (
+                        <>🗑 Clear All</>
+                      )}
+                    </button>
+                  )}
                 </div>
                 <div className="filter-tabs">
                   {['all', 'critical', 'high', 'medium', 'low', 'open', 'approved', 'dismissed'].map((f) => (

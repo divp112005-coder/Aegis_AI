@@ -73,10 +73,23 @@ and MITRE mapping:
   made the connection) for context.
 
 - "connection_volume": A single source IP made an abnormally high number of network connections within \
-  a short window — possible C2 beacon traffic, data exfiltration, or worm-like lateral movement scanning. \
-  Map to T1071 - Application Layer Protocol (for C2) or T1048 - Exfiltration Over Alternative Protocol. \
-  Severity scales with volume and whether the destination IPs are external. The details field includes \
-  connection_count and window_minutes.
+a short window — possible C2 beacon traffic, data exfiltration, or worm-like lateral movement scanning. \
+Map to T1071 - Application Layer Protocol (for C2) or T1048 - Exfiltration Over Alternative Protocol. \
+Severity scales with volume and whether the destination IPs are external. The details field includes \
+connection_count and window_minutes.
+
+- "syn_flood": A single source IP sent an abnormally high volume of TCP packets within a 1-minute window, \
+captured via the scapy-based packet monitor. This pattern is consistent with a TCP SYN flood — a volumetric \
+Network Denial of Service attack intended to exhaust server connection resources. Map to T1498 - Network \
+Denial of Service. Severity should be High or Critical. The details field includes packet_count and \
+window_minutes. Consider recommending upstream rate-limiting or ISP-level traffic scrubbing.
+
+- "dns_tunneling": A single source IP made an abnormally high number of DNS requests (dest_port 53) within \
+a 1-minute window, captured via the scapy-based packet monitor. High-frequency DNS activity from one host \
+is a well-known heuristic for DNS tunneling — a technique where attackers exfiltrate data or maintain C2 \
+communication hidden inside DNS query/response payloads. Map to T1071.004 - Application Layer Protocol: DNS. \
+Severity should be High. The details field includes dns_query_count and window_minutes. Recommend capturing \
+full DNS query strings for forensic review and blocking the source IP at the DNS resolver.
 
 Always ground your reasoning in the specific details and related logs provided rather than generic advice."""
 
@@ -97,7 +110,7 @@ def build_prompt(alert: Alert, related_logs: list[Log]) -> str:
             "event_type": log.event_type,
             "geo_location": log.geo_location,
             **({"dest_port": log.dest_port, "protocol": log.protocol, "application": log.application}
-               if log.event_type in ("network_connection", "network_connection_blocked") else {}),
+               if log.event_type in ("network_connection", "network_connection_blocked", "packet_capture") else {}),
         }
         for log in related_logs
     ]
@@ -129,7 +142,8 @@ def analyze_alert(alert_id: int):
         # are best explained by that user's recent activity across IPs.
         log_query = session.query(Log).filter(Log.owner_id == alert.owner_id)
 
-        if alert.alert_type in ("brute_force", "port_scan", "suspicious_port", "connection_volume"):
+        if alert.alert_type in ("brute_force", "port_scan", "suspicious_port", "connection_volume",
+                                 "syn_flood", "dns_tunneling"):
             log_query = log_query.filter(Log.source_ip == alert.source_ip)
         elif alert.username:
             log_query = log_query.filter(Log.username == alert.username)

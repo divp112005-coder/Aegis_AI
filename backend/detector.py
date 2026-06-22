@@ -1,5 +1,5 @@
 """
-Detector job: runs periodically and checks for 8 threat patterns,
+Detector job: runs periodically and checks for 10 threat patterns,
 PER USER (owner_id), creating an Alert scoped to that user when found:
 
   Auth/identity rules:
@@ -13,6 +13,10 @@ PER USER (owner_id), creating an Alert scoped to that user when found:
   6. port_scan             - one IP hits 10+ distinct destination ports within 2 minutes
   7. suspicious_port       - connection to a known-bad port (Metasploit defaults, RAT ports, etc.)
   8. connection_volume     - one source IP makes 50+ distinct outbound connections in 5 minutes
+
+  Packet-capture rules (require packet_monitor.py / scapy-based agent):
+  9. syn_flood             - abnormally high TCP SYN count from one source IP in 1 minute (>100)
+  10. dns_tunneling        - abnormally high DNS query count from one source IP in 1 minute (>50)
 """
 
 import time
@@ -36,6 +40,11 @@ PORT_SCAN_DISTINCT_PORTS = 10       # distinct destination ports from one IP wit
 PORT_SCAN_WINDOW_MINUTES = 2
 CONNECTION_VOLUME_THRESHOLD = 50    # distinct outbound connections from one IP within the window
 CONNECTION_VOLUME_WINDOW_MINUTES = 5
+
+# Packet-capture rule thresholds (scapy agent)
+SYN_FLOOD_THRESHOLD = 100           # TCP SYN packets from one IP within 1 minute
+DNS_TUNNEL_THRESHOLD = 50           # DNS queries from one IP within 1 minute
+PACKET_WINDOW_MINUTES = 1
 
 SUSPICIOUS_PORTS = {
     4444,   # Metasploit default listener
@@ -368,11 +377,81 @@ def check_connection_volume(session, owner_id: int):
         )
 
 
+# ── Rule 9: SYN flood ────────────────────────────────────────────────────────
+
+def check_syn_flood(session, owner_id: int):
+    """
+    Flags a source IP that sends an abnormally high number of TCP packets
+    (identified by protocol="TCP") from the packet_capture stream within a
+    1-minute window — consistent with a SYN flood / DoS attack pattern.
+
+    Maps to MITRE T1498 (Network Denial of Service).
+    """
+    cutoff = datetime.utcnow() - timedelta(minutes=PACKET_WINDOW_MINUTES)
+    results = (
+        session.query(Log.source_ip, func.count(Log.id).label("pkt_count"))
+        .filter(
+            Log.owner_id == owner_id,
+            Log.event_type == "packet_capture",
+            Log.protocol == "TCP",
+            Log.timestamp >= cutoff,
+        )
+        .group_by(Log.source_ip)
+        .having(func.count(Log.id) >= SYN_FLOOD_THRESHOLD)
+        .all()
+    )
+    for source_ip, pkt_count in results:
+        if source_ip in ("127.0.0.1", "0.0.0.0", "::1"):
+            continue
+        if _alert_already_exists(session, owner_id, "syn_flood", source_ip):
+            continue
+        _create_alert(
+            session, owner_id, "syn_flood", source_ip, None,
+            details=f'{{"packet_count": {pkt_count}, "protocol": "TCP", "window_minutes": {PACKET_WINDOW_MINUTES}}}',
+            severity="high",
+        )
+
+
+# ── Rule 10: DNS tunneling heuristic ─────────────────────────────────────────
+
+def check_dns_tunneling(session, owner_id: int):
+    """
+    Flags a source IP that makes an abnormally high volume of DNS requests
+    (dest_port == 53) within a 1-minute window — a common heuristic for
+    DNS tunneling or DNS-based C2 communication.
+
+    Maps to MITRE T1071.004 (Application Layer Protocol: DNS).
+    """
+    cutoff = datetime.utcnow() - timedelta(minutes=PACKET_WINDOW_MINUTES)
+    results = (
+        session.query(Log.source_ip, func.count(Log.id).label("dns_count"))
+        .filter(
+            Log.owner_id == owner_id,
+            Log.event_type == "packet_capture",
+            Log.dest_port == 53,
+            Log.timestamp >= cutoff,
+        )
+        .group_by(Log.source_ip)
+        .having(func.count(Log.id) >= DNS_TUNNEL_THRESHOLD)
+        .all()
+    )
+    for source_ip, dns_count in results:
+        if source_ip in ("127.0.0.1", "0.0.0.0", "::1"):
+            continue
+        if _alert_already_exists(session, owner_id, "dns_tunneling", source_ip):
+            continue
+        _create_alert(
+            session, owner_id, "dns_tunneling", source_ip, None,
+            details=f'{{"dns_query_count": {dns_count}, "dest_port": 53, "window_minutes": {PACKET_WINDOW_MINUTES}}}',
+            severity="high",
+        )
+
+
 # ── Orchestration ────────────────────────────────────────────────────────────
 
 def check_brute_force_for_user(session, owner_id: int):
     """Kept for backward compatibility with main.py's /demo/seed endpoint,
-    which calls this name directly. Now runs all 8 rules for that user."""
+    which calls this name directly. Now runs all 10 rules for that user."""
     check_brute_force(session, owner_id)
     check_geo_anomaly(session, owner_id)
     check_off_hours_login(session, owner_id)
@@ -381,6 +460,8 @@ def check_brute_force_for_user(session, owner_id: int):
     check_port_scan(session, owner_id)
     check_suspicious_port(session, owner_id)
     check_connection_volume(session, owner_id)
+    check_syn_flood(session, owner_id)
+    check_dns_tunneling(session, owner_id)
 
 
 def run_detection_cycle(session):
@@ -392,7 +473,7 @@ def run_detection_cycle(session):
 
 def run_loop(interval=10):
     init_db()
-    print(f"Detector running every {interval}s across all users (8 rule types: 5 auth + 3 network). Ctrl+C to stop.")
+    print(f"Detector running every {interval}s across all users (10 rule types: 5 auth + 3 network + 2 packet). Ctrl+C to stop.")
     try:
         while True:
             session = SessionLocal()

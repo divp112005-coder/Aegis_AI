@@ -37,6 +37,7 @@ const TIERS = [
       { icon: '⬡', text: 'Full AI analyst agent (LLaMA 3.3 70B)' },
       { icon: '⬡', text: 'MITRE ATT&CK auto-mapping' },
       { icon: '⬡', text: 'REST API + webhook access' },
+      { icon: '📡', text: 'Experimental Packet Monitoring (scapy)' },
     ],
     cta: 'Upgrade to Pro',
     highlighted: true,
@@ -56,6 +57,7 @@ const TIERS = [
       { icon: '⬡', text: 'Full AI analyst agent (LLaMA 3.3 70B)' },
       { icon: '⬡', text: 'Audit logs & compliance reports' },
       { icon: '⬡', text: 'Custom detection rules' },
+      { icon: '📡', text: 'Experimental Packet Monitoring (scapy)' },
     ],
     cta: 'Contact Sales',
     highlighted: false,
@@ -345,7 +347,6 @@ export default function Pricing() {
                 {tier.features.map((f, i) => (
                   <li key={i} className="tier-feature">
                     <span className="feature-check">✓</span>
-                    <span className="feature-icon-sm">{f.icon}</span>
                     {f.text}
                   </li>
                 ))}

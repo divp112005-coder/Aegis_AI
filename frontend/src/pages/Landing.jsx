@@ -9,6 +9,7 @@ const FEATURES = [
   { icon: '⬡', title: 'Live Dashboard', desc: 'Real-time alert feed with severity heatmaps, related log timelines, and full analyst reports on click.' },
   { icon: '⬡', title: 'REST API', desc: 'Integrate with your existing stack. Full API access with JWT auth, filterable log queries, and webhook support.' },
   { icon: '⬡', title: 'MITRE ATT&CK', desc: 'Every alert is automatically tagged with the relevant ATT&CK technique ID — no manual mapping needed.' },
+  { icon: '⬡', title: 'Experimental Packet Monitoring', desc: 'Capture live traffic metadata without deep packet inspection to detect SYN floods, DNS tunneling, and more. Built for the experimental frontier.' },
 ];
 
 const STATS = [

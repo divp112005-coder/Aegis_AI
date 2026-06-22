@@ -112,6 +112,35 @@ def _get_owned_alert(db: Session, alert_id: int, current_user: User) -> Alert:
     return alert
 
 
+@app.delete("/alerts")
+def clear_all_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Delete ALL alerts owned by the authenticated user, including their
+    AI analyst reports (cascade). Useful for resetting the dashboard
+    during development or after a demo run. Irreversible.
+    """
+    from models import AnalystReport
+    # Delete analyst reports first (FK constraint: report.alert_id → alert.id)
+    report_ids = (
+        db.query(Alert.id)
+        .filter(Alert.owner_id == current_user.id)
+        .subquery()
+    )
+    db.query(AnalystReport).filter(AnalystReport.alert_id.in_(report_ids)).delete(
+        synchronize_session="fetch"
+    )
+    deleted = (
+        db.query(Alert)
+        .filter(Alert.owner_id == current_user.id)
+        .delete(synchronize_session="fetch")
+    )
+    db.commit()
+    return {"deleted": deleted}
+
+
 @app.get("/alerts/{alert_id}")
 def get_alert_detail(
     alert_id: int,
@@ -352,6 +381,7 @@ VALID_EVENT_TYPES = {
     "login_success", "login_failed", "file_access",
     "privilege_change", "logout",
     "network_connection", "network_connection_blocked",
+    "packet_capture",  # experimental: scapy-based packet-level monitoring
 }
 
 
@@ -405,11 +435,12 @@ def ingest_logs(
             geo_location=_geo_for_ip(event.source_ip),
             raw=json.dumps(raw_dict) if raw_dict else None,
             source=body.source,
-            # Network-specific fields — only populated for network connection events.
-            # The agent puts these in the raw dict under standardised keys.
-            dest_port=raw_dict.get("dest_port") if event.event_type in ("network_connection", "network_connection_blocked") else None,
-            protocol=raw_dict.get("protocol") if event.event_type in ("network_connection", "network_connection_blocked") else None,
-            application=raw_dict.get("application") if event.event_type in ("network_connection", "network_connection_blocked") else None,
+            # Network-specific fields — populated for network connection and
+            # packet_capture events. The agent puts these in the raw dict
+            # under standardised keys.
+            dest_port=raw_dict.get("dest_port") if event.event_type in ("network_connection", "network_connection_blocked", "packet_capture") else None,
+            protocol=raw_dict.get("protocol") if event.event_type in ("network_connection", "network_connection_blocked", "packet_capture") else None,
+            application=raw_dict.get("application") if event.event_type in ("network_connection", "network_connection_blocked", "packet_capture") else None,
         )
         db.add(log)
         inserted += 1

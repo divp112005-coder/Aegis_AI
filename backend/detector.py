@@ -89,11 +89,10 @@ def _create_alert(session, owner_id, alert_type, source_ip, username, details: s
     session.commit()
     print(f"[ALERT CREATED] owner_id={owner_id} type={alert_type} ip={source_ip} user={username}")
 
-    try:
-        from ai_analyst import analyze_alert
-        analyze_alert(alert.id)
-    except Exception as e:
-        print(f"[AI ANALYST ERROR] {e}")
+    # AI analysis is intentionally NOT triggered automatically here.
+    # It runs on-demand only: POST /alerts/{id}/analyze in the frontend
+    # (the "Run Analysis" button in the alert detail drawer). This avoids
+    # exhausting the Groq free-tier rate limit during repeated test runs.
 
 
 # ── Rule 1: Brute force ──────────────────────────────────────────────────────

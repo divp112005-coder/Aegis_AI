@@ -471,7 +471,7 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
           ) : (
             <div className="detail-section no-report-section">
               <div className="no-report-inner">
-                <span className="no-report-icon">🔬</span>
+
                 <p>No AI analysis yet for this alert.</p>
                 <button
                   className="btn-analyze"
@@ -481,7 +481,7 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
                   {analyzing ? (
                     <><span className="btn-spinner" /> Analyzing…</>
                   ) : (
-                    <><span>⚡</span> Run Analysis</>
+                    <><span>⬡</span> Run Analysis</>
                   )}
                 </button>
               </div>

@@ -1,12 +1,18 @@
 """
-Detector job: runs periodically and checks for 5 threat patterns,
+Detector job: runs periodically and checks for 8 threat patterns,
 PER USER (owner_id), creating an Alert scoped to that user when found:
 
+  Auth/identity rules:
   1. brute_force          - 5+ failed logins from one IP in 1 minute
   2. geo_anomaly           - login_success from a country not seen before for that user
   3. off_hours_login       - login_success between 00:00-05:00 UTC
-  4. privilege_escalation  - privilege_change within 5 min of a login_success
+  4. privilege_escalation  - privilege_change within 5 min of a login_success (external IP only)
   5. impossible_travel     - same user, login_success from 2 different countries within 10 min
+
+  Network rules (require windows_event_tailer with 5156/5157 events enabled):
+  6. port_scan             - one IP hits 10+ distinct destination ports within 2 minutes
+  7. suspicious_port       - connection to a known-bad port (Metasploit defaults, RAT ports, etc.)
+  8. connection_volume     - one source IP makes 50+ distinct outbound connections in 5 minutes
 """
 
 import time
@@ -24,6 +30,26 @@ GEO_LOOKBACK_DAYS = 30          # how far back to check "known" countries for ge
 TRAVEL_WINDOW_MINUTES = 10      # max gap for impossible_travel
 PRIV_ESCALATION_WINDOW_MINUTES = 5
 SCAN_WINDOW_MINUTES = 2         # general lookback window for the newer rules each cycle
+
+# Network rule thresholds
+PORT_SCAN_DISTINCT_PORTS = 10       # distinct destination ports from one IP within the window
+PORT_SCAN_WINDOW_MINUTES = 2
+CONNECTION_VOLUME_THRESHOLD = 50    # distinct outbound connections from one IP within the window
+CONNECTION_VOLUME_WINDOW_MINUTES = 5
+
+SUSPICIOUS_PORTS = {
+    4444,   # Metasploit default listener
+    31337,  # classic "elite" backdoor port
+    1337,   # common RAT/backdoor
+    6666, 6667,  # IRC-based C2
+    12345,  # NetBus RAT
+    54321,  # common reverse shell
+    8081,   # alternative HTTP often used for exfil
+    9001,   # Tor default / common C2
+    3389,   # RDP - suspicious if outbound from a workstation
+    5900,   # VNC
+    23,     # Telnet - unencrypted, rarely legitimate today
+}
 
 
 def _alert_already_exists(session, owner_id, alert_type, source_ip, username=None):
@@ -248,16 +274,113 @@ def check_impossible_travel(session, owner_id: int):
             )
 
 
+# ── Rule 6: Port scan ────────────────────────────────────────────────────────
+
+def check_port_scan(session, owner_id: int):
+    """
+    Flags a source IP that connects to many distinct destination ports within
+    a short window — classic pattern for network reconnaissance / port scanning.
+    Only operates on network_connection events (Windows 5156 via the agent).
+    """
+    cutoff = datetime.utcnow() - timedelta(minutes=PORT_SCAN_WINDOW_MINUTES)
+    results = (
+        session.query(Log.source_ip, func.count(Log.dest_port.distinct()).label("port_count"))
+        .filter(
+            Log.owner_id == owner_id,
+            Log.event_type == "network_connection",
+            Log.dest_port.isnot(None),
+            Log.timestamp >= cutoff,
+        )
+        .group_by(Log.source_ip)
+        .having(func.count(Log.dest_port.distinct()) >= PORT_SCAN_DISTINCT_PORTS)
+        .all()
+    )
+    for source_ip, port_count in results:
+        if source_ip in ("127.0.0.1", "0.0.0.0"):
+            continue
+        if _alert_already_exists(session, owner_id, "port_scan", source_ip):
+            continue
+        _create_alert(
+            session, owner_id, "port_scan", source_ip, None,
+            details=f'{{"distinct_ports_scanned": {port_count}, "window_minutes": {PORT_SCAN_WINDOW_MINUTES}}}',
+            severity="high",
+        )
+
+
+# ── Rule 7: Suspicious port connection ───────────────────────────────────────
+
+def check_suspicious_port(session, owner_id: int):
+    """
+    Flags any connection (inbound or outbound) to a port commonly associated
+    with malware, RATs, Metasploit listeners, or other attack tooling.
+    These are worth investigating regardless of other context.
+    """
+    cutoff = datetime.utcnow() - timedelta(minutes=SCAN_WINDOW_MINUTES)
+    recent_connections = (
+        session.query(Log)
+        .filter(
+            Log.owner_id == owner_id,
+            Log.event_type.in_(["network_connection", "network_connection_blocked"]),
+            Log.dest_port.in_(list(SUSPICIOUS_PORTS)),
+            Log.timestamp >= cutoff,
+        )
+        .all()
+    )
+    for log in recent_connections:
+        if _alert_already_exists(session, owner_id, "suspicious_port", log.source_ip):
+            continue
+        _create_alert(
+            session, owner_id, "suspicious_port", log.source_ip, None,
+            details=f'{{"dest_port": {log.dest_port}, "application": "{log.application or "unknown"}", "event_type": "{log.event_type}"}}',
+            severity="high",
+        )
+
+
+# ── Rule 8: Connection volume anomaly ─────────────────────────────────────────
+
+def check_connection_volume(session, owner_id: int):
+    """
+    Flags a source IP that makes an abnormally high number of distinct outbound
+    connections in a short window — possible C2 beaconing, data exfiltration,
+    or worm-like lateral movement scanning.
+    """
+    cutoff = datetime.utcnow() - timedelta(minutes=CONNECTION_VOLUME_WINDOW_MINUTES)
+    results = (
+        session.query(Log.source_ip, func.count(Log.id).label("conn_count"))
+        .filter(
+            Log.owner_id == owner_id,
+            Log.event_type == "network_connection",
+            Log.timestamp >= cutoff,
+        )
+        .group_by(Log.source_ip)
+        .having(func.count(Log.id) >= CONNECTION_VOLUME_THRESHOLD)
+        .all()
+    )
+    for source_ip, conn_count in results:
+        if source_ip in ("127.0.0.1", "0.0.0.0"):
+            continue
+        if _alert_already_exists(session, owner_id, "connection_volume", source_ip):
+            continue
+        _create_alert(
+            session, owner_id, "connection_volume", source_ip, None,
+            details=f'{{"connection_count": {conn_count}, "window_minutes": {CONNECTION_VOLUME_WINDOW_MINUTES}}}',
+            severity="medium",
+        )
+
+
 # ── Orchestration ────────────────────────────────────────────────────────────
 
 def check_brute_force_for_user(session, owner_id: int):
     """Kept for backward compatibility with main.py's /demo/seed endpoint,
-    which calls this name directly. Now runs all 5 rules for that user."""
+    which calls this name directly. Now runs all 8 rules for that user."""
     check_brute_force(session, owner_id)
     check_geo_anomaly(session, owner_id)
     check_off_hours_login(session, owner_id)
     check_privilege_escalation(session, owner_id)
     check_impossible_travel(session, owner_id)
+    check_port_scan(session, owner_id)
+    check_suspicious_port(session, owner_id)
+    check_connection_volume(session, owner_id)
 
 
 def run_detection_cycle(session):
@@ -269,7 +392,7 @@ def run_detection_cycle(session):
 
 def run_loop(interval=10):
     init_db()
-    print(f"Detector running every {interval}s across all users (5 rule types). Ctrl+C to stop.")
+    print(f"Detector running every {interval}s across all users (8 rule types: 5 auth + 3 network). Ctrl+C to stop.")
     try:
         while True:
             session = SessionLocal()

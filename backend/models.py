@@ -41,6 +41,11 @@ class Log(Base):
     geo_location = Column(String, nullable=True)
     raw = Column(Text, nullable=True)  # raw JSON string of the full log line
     source = Column(String, default="simulated")  # "simulated" or e.g. "windows_event_log"
+    # Network-specific fields — populated for network_connection / network_connection_blocked events.
+    # Null for auth/login events, which don't have destination port/protocol context.
+    dest_port = Column(Integer, nullable=True, index=True)
+    protocol = Column(String, nullable=True)
+    application = Column(String, nullable=True)  # process name that made the connection
 
     owner = relationship("User")
 

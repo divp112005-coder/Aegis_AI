@@ -30,6 +30,7 @@ as Administrator.
 import argparse
 import time
 import json
+import random
 from datetime import datetime, timezone
 
 try:
@@ -52,10 +53,59 @@ EVENT_ID_MAP = {
     4672: "privilege_change",
     4634: "logout",
     4647: "logout",
+    5156: "network_connection",
+    5157: "network_connection_blocked",
 }
+
+NETWORK_EVENT_IDS = {5156, 5157}
 
 LOG_TYPE = "Security"
 SERVER = "localhost"
+
+# ── Local pre-filtering for network events ──────────────────────────────────
+# 5156/5157 fire constantly on a normal machine (every app, every background
+# service). We never ship every connection — only ones that pass this filter,
+# keeping volume manageable and signal-to-noise reasonable.
+
+# Don't bother shipping connections to/from the loopback range or the Aegis
+# backend itself (the agent's own traffic would otherwise spam itself).
+IGNORED_LOCAL_PREFIXES = ("127.", "0.0.0.0")
+
+# Common, well-known safe outbound ports we don't need per-connection events
+# for (HTTPS/HTTP/DNS browsing noise). Connections on these ports are only
+# shipped if they're otherwise unusual (see should_ship_network_event).
+COMMON_SAFE_PORTS = {80, 443, 53, 123, 5353}
+
+# Ports commonly associated with malware C2, remote access trojans, or
+# pentest tooling defaults — always worth shipping if seen.
+SUSPICIOUS_PORTS = {4444, 31337, 1337, 6666, 6667, 12345, 54321, 8081, 9001}
+
+
+def should_ship_network_event(dest_ip: str, dest_port: int, direction: str) -> bool:
+    """
+    Local pre-filter decision: should this connection event even be sent to
+    the backend? Returns True only for events worth the AI/detector's time.
+    """
+    if dest_ip and dest_ip.startswith(IGNORED_LOCAL_PREFIXES):
+        return False
+
+    if dest_port in SUSPICIOUS_PORTS:
+        return True
+
+    if direction == "blocked":
+        # Blocked connections (5157) are inherently more interesting than
+        # routine allowed traffic — always ship these.
+        return True
+
+    if dest_port in COMMON_SAFE_PORTS:
+        # Routine browsing/DNS noise on standard ports — skip to keep volume sane.
+        # The port-scan and connection-volume detection rules operate on
+        # aggregate patterns server-side, so we still want SOME signal here,
+        # but not every single HTTPS connection. Ship roughly 1 in 20 to
+        # keep a representative trickle without flooding.
+        return random.random() < 0.05
+
+    return True
 
 
 def _extract_username(event) -> str:
@@ -142,10 +192,63 @@ def read_new_events(handle, last_record_number: int, debug=False):
     return collected, newest_seen
 
 
+def _extract_network_fields(event) -> dict:
+    """
+    Parses StringInserts for 5156 (connection allowed) / 5157 (connection
+    blocked). Typical layout (may vary slightly by Windows build):
+      [0] ProcessID
+      [1] Application (full path to the .exe)
+      [2] Direction (%%14592 = inbound, %%14593 = outbound)
+      [3] SourceAddress
+      [4] SourcePort
+      [5] DestAddress
+      [6] DestPort
+      [7] Protocol
+    We parse defensively since exact indices can shift between Windows versions.
+    """
+    inserts = event.StringInserts or []
+
+    def safe_get(idx, default=""):
+        return inserts[idx] if len(inserts) > idx and inserts[idx] else default
+
+    application = safe_get(1, "unknown")
+    dest_ip = safe_get(5, "0.0.0.0")
+    dest_port_raw = safe_get(6, "0")
+    protocol_raw = safe_get(7, "")
+
+    try:
+        dest_port = int(dest_port_raw)
+    except ValueError:
+        dest_port = 0
+
+    return {
+        "application": application,
+        "dest_ip": dest_ip,
+        "dest_port": dest_port,
+        "protocol": protocol_raw,
+    }
+
+
 def event_to_payload(event) -> dict:
     event_id = event.EventID & 0xFFFF
     event_type = EVENT_ID_MAP[event_id]
     ts = event.TimeGenerated.replace(tzinfo=None)  # pywin32 gives local time
+
+    if event_id in NETWORK_EVENT_IDS:
+        net = _extract_network_fields(event)
+        return {
+            "timestamp": ts.isoformat(),
+            "source_ip": net["dest_ip"],  # the remote endpoint is the meaningful "source" for detection purposes
+            "username": None,
+            "event_type": event_type,
+            "raw": {
+                "event_id": event_id,
+                "application": net["application"],
+                "dest_port": net["dest_port"],
+                "protocol": net["protocol"],
+                "computer_name": event.ComputerName,
+            },
+        }
 
     return {
         "timestamp": ts.isoformat(),
@@ -229,9 +332,24 @@ def main():
 
                 print(f"[poll] checked up to record #{last_record_number} — {len(new_events)} relevant event(s) found.")
                 if new_events:
-                    payloads = [event_to_payload(e) for e in new_events]
-                    print(f"Found {len(payloads)} new relevant security event(s).")
-                    ship_batch(args.api_url, args.api_key, payloads, source_label="windows_event_log")
+                    payloads = []
+                    filtered_count = 0
+                    for e in new_events:
+                        event_id = e.EventID & 0xFFFF
+                        if event_id in NETWORK_EVENT_IDS:
+                            net = _extract_network_fields(e)
+                            direction = "blocked" if event_id == 5157 else "allowed"
+                            if not should_ship_network_event(net["dest_ip"], net["dest_port"], direction):
+                                filtered_count += 1
+                                continue
+                        payloads.append(event_to_payload(e))
+
+                    if filtered_count and args.debug:
+                        print(f"  [debug] filtered out {filtered_count} routine network event(s) before shipping")
+
+                    if payloads:
+                        print(f"Found {len(payloads)} new relevant security event(s) (after filtering).")
+                        ship_batch(args.api_url, args.api_key, payloads, source_label="windows_event_log")
 
             except pywintypes.error as e:
                 # Transient Windows event log handle errors (e.g. "The handle is

@@ -59,6 +59,25 @@ and MITRE mapping:
   Accounts. Strongly suggests credential compromise or session/token theft — severity should generally be \
   high or critical.
 
+- "port_scan": A single source IP connected to an unusually large number of distinct destination ports \
+  in a short time window — classic network reconnaissance behavior. Map to T1046 - Network Service \
+  Discovery. Severity is high if the source is external; medium if internal (could be a misconfigured \
+  scanner, security tool, or compromised internal host). The details field includes distinct_ports_scanned \
+  and window_minutes for context.
+
+- "suspicious_port": A network connection was made to or from a port strongly associated with malware, \
+  remote access trojans (RATs), or common pentest/attack tooling (e.g. 4444 Metasploit, 31337 classic \
+  backdoor, 3389 RDP outbound, 23 Telnet). Map to T1071 - Application Layer Protocol or T1219 - Remote \
+  Access Software depending on the port. Severity should be high by default — any connection to these \
+  ports warrants investigation. The details field includes dest_port and application (the process that \
+  made the connection) for context.
+
+- "connection_volume": A single source IP made an abnormally high number of network connections within \
+  a short window — possible C2 beacon traffic, data exfiltration, or worm-like lateral movement scanning. \
+  Map to T1071 - Application Layer Protocol (for C2) or T1048 - Exfiltration Over Alternative Protocol. \
+  Severity scales with volume and whether the destination IPs are external. The details field includes \
+  connection_count and window_minutes.
+
 Always ground your reasoning in the specific details and related logs provided rather than generic advice."""
 
 
@@ -77,6 +96,8 @@ def build_prompt(alert: Alert, related_logs: list[Log]) -> str:
             "username": log.username,
             "event_type": log.event_type,
             "geo_location": log.geo_location,
+            **({"dest_port": log.dest_port, "protocol": log.protocol, "application": log.application}
+               if log.event_type in ("network_connection", "network_connection_blocked") else {}),
         }
         for log in related_logs
     ]
@@ -108,7 +129,7 @@ def analyze_alert(alert_id: int):
         # are best explained by that user's recent activity across IPs.
         log_query = session.query(Log).filter(Log.owner_id == alert.owner_id)
 
-        if alert.alert_type == "brute_force":
+        if alert.alert_type in ("brute_force", "port_scan", "suspicious_port", "connection_volume"):
             log_query = log_query.filter(Log.source_ip == alert.source_ip)
         elif alert.username:
             log_query = log_query.filter(Log.username == alert.username)

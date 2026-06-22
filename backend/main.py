@@ -65,6 +65,10 @@ def get_logs(
             "username": l.username,
             "event_type": l.event_type,
             "geo_location": l.geo_location,
+            "dest_port": l.dest_port,
+            "protocol": l.protocol,
+            "application": l.application,
+            "source": l.source,
         }
         for l in logs
     ]
@@ -344,7 +348,11 @@ class IngestEvent(BaseModel):
     event_type: str  # login_success | login_failed | file_access | privilege_change | logout
     raw: Optional[dict] = None  # original unparsed event, stored for audit/debugging
 
-VALID_EVENT_TYPES = {"login_success", "login_failed", "file_access", "privilege_change", "logout"}
+VALID_EVENT_TYPES = {
+    "login_success", "login_failed", "file_access",
+    "privilege_change", "logout",
+    "network_connection", "network_connection_blocked",
+}
 
 
 class IngestBatch(BaseModel):
@@ -387,6 +395,7 @@ def ingest_logs(
             skipped.append({"index": i, "reason": f"invalid timestamp: {event.timestamp}"})
             continue
 
+        raw_dict = event.raw or {}
         log = Log(
             owner_id=agent_user.id,
             timestamp=ts,
@@ -394,8 +403,13 @@ def ingest_logs(
             username=event.username,
             event_type=event.event_type,
             geo_location=_geo_for_ip(event.source_ip),
-            raw=json.dumps(event.raw) if event.raw else None,
+            raw=json.dumps(raw_dict) if raw_dict else None,
             source=body.source,
+            # Network-specific fields — only populated for network connection events.
+            # The agent puts these in the raw dict under standardised keys.
+            dest_port=raw_dict.get("dest_port") if event.event_type in ("network_connection", "network_connection_blocked") else None,
+            protocol=raw_dict.get("protocol") if event.event_type in ("network_connection", "network_connection_blocked") else None,
+            application=raw_dict.get("application") if event.event_type in ("network_connection", "network_connection_blocked") else None,
         )
         db.add(log)
         inserted += 1

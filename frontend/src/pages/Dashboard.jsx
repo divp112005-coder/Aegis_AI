@@ -6,6 +6,66 @@ import './Dashboard.css';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
+/* ── Network alert classification ───────────────────────────────────── */
+const NETWORK_ALERT_TYPES = new Set(['port_scan', 'suspicious_port', 'connection_volume']);
+const SUSPICIOUS_PORTS    = new Set([4444, 31337, 1337, 6666, 6667, 12345, 54321, 8081, 9001, 3389, 5900, 23]);
+
+const isNetworkAlert = (type) => NETWORK_ALERT_TYPES.has(type);
+
+/* Helper: just the filename from a Windows path */
+const basename = (p) => (p ? p.split('\\').pop() : null);
+
+/* ── Alert-type icon badge ───────────────────────────────────────────── */
+function AlertTypeIcon({ alertType }) {
+  if (!alertType) return null;
+  const icon = isNetworkAlert(alertType) ? '🌐' : '🔐';
+  return <span className="alert-type-icon" title={alertType}>{icon}</span>;
+}
+
+/* ── Details JSON panel ─────────────────────────────────────────────── */
+const DETAIL_FIELD_LABELS = {
+  distinct_ports_scanned: 'Ports Scanned',
+  dest_port:              'Destination Port',
+  connection_count:       'Connection Count',
+  application:            'Application',
+  window_minutes:         'Detection Window',
+  protocol:               'Protocol',
+  remote_ip:              'Remote IP',
+};
+
+function AlertDetailsSection({ details, alertType }) {
+  if (!details) return null;
+  let parsed = {};
+  try { parsed = typeof details === 'string' ? JSON.parse(details) : details; } catch { return null; }
+  const entries = Object.entries(parsed);
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="detail-section">
+      <h4 className="section-label">Detection Details</h4>
+      <div className="detail-kv-list">
+        {entries.map(([k, v]) => {
+          const label = DETAIL_FIELD_LABELS[k] || k.replace(/_/g, ' ');
+          let display = v;
+          if (k === 'application' && v) display = basename(String(v));
+          if (k === 'window_minutes' && v != null) display = `${v} min`;
+          return (
+            <div key={k} className="detail-kv-row">
+              <span className="detail-kv-label">{label}</span>
+              <span className={`detail-kv-val${k === 'dest_port' || k === 'protocol' ? ' mono' : ''}`}>
+                {k === 'dest_port' && SUSPICIOUS_PORTS.has(Number(v))
+                  ? <span className="port-suspicious">{String(display ?? '—')}</span>
+                  : String(display ?? '—')}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
 const SEVERITY_COLORS = {
   critical: '#B84060',
   high:     '#C4613A',
@@ -424,6 +484,9 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
             </div>
           )}
 
+          {/* Detection Details (parsed JSON) */}
+          <AlertDetailsSection details={alert.details} alertType={alert.alert_type} />
+
           {/* Related Logs */}
           {alert.related_logs && alert.related_logs.length > 0 && (
             <div className="detail-section logs-section">
@@ -433,14 +496,32 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
               </h4>
               <div className="logs-list">
                 {alert.related_logs.slice(0, 15).map((log) => (
-                  <div key={log.id} className="log-item">
-                    <span className="log-time">
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </span>
-                    <span className="log-user">{log.username}</span>
-                    <span className="log-event">{log.event_type}</span>
-                    <span className="log-geo">{log.geo_location}</span>
-                  </div>
+                  isNetworkAlert(alert.alert_type) ? (
+                    /* Network alert columns: timestamp, event_type, dest_port, protocol, application */
+                    <div key={log.id} className="log-item log-item-network">
+                      <span className="log-time">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span className="log-event">{log.event_type}</span>
+                      <span className={`log-port${SUSPICIOUS_PORTS.has(Number(log.dest_port)) ? ' log-port-suspicious' : ''}`}>
+                        {log.dest_port ?? '—'}
+                      </span>
+                      <span className="log-proto">{log.protocol ?? '—'}</span>
+                      <span className="log-app" title={log.application}>
+                        {basename(log.application) ?? '—'}
+                      </span>
+                    </div>
+                  ) : (
+                    /* Auth alert columns: timestamp, username, event_type, geo_location */
+                    <div key={log.id} className="log-item">
+                      <span className="log-time">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span className="log-user">{log.username ?? '—'}</span>
+                      <span className="log-event">{log.event_type}</span>
+                      <span className="log-geo">{log.geo_location}</span>
+                    </div>
+                  )
                 ))}
               </div>
             </div>
@@ -754,7 +835,10 @@ export default function Dashboard() {
                           <td className="col-time">
                             {new Date(alert.created_at).toLocaleTimeString()}
                           </td>
-                          <td className="col-type">{alert.alert_type?.replace(/_/g, ' ')}</td>
+                          <td className="col-type">
+                            <AlertTypeIcon alertType={alert.alert_type} />
+                            {alert.alert_type?.replace(/_/g, ' ')}
+                          </td>
                           <td className="col-ip">{alert.source_ip}</td>
                           <td className="col-user">{alert.username || '—'}</td>
                           <td className="col-sev">

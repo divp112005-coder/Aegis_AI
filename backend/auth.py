@@ -61,6 +61,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    """Decode the JWT, then **actively verify** the user still exists in the
+    database.  A mathematically valid token for a deleted/missing user (a
+    "Ghost Token") is rejected with 401 so the frontend can force a re-login."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -74,9 +77,17 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise credentials_exception
 
+    # ── Ghost-Token guard ──────────────────────────────────────────────────
+    # The JWT signature is valid, but the user it references may no longer
+    # exist (e.g. the database was wiped, or the account was deleted).
+    # Raise a *distinct* 401 so it is easy to spot in logs.
     user = db.query(User).filter(User.email == email).first()
     if user is None:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session is no longer valid — please log in again",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 

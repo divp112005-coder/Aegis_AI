@@ -4,7 +4,6 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import './Settings.css';
 
-const API_BASE = 'http://127.0.0.1:8000';
 
 /* ── Tooltip wrapper ─────────────────────────────────────────────── */
 function Tooltip({ text, children }) {
@@ -55,7 +54,7 @@ function SectionCard({ icon, title, children }) {
 
 /* ── Settings page ───────────────────────────────────────────────── */
 export default function Settings() {
-  const { user, token, logout, refreshUser } = useAuth();
+  const { user, token, logout, refreshUser, apiFetch } = useAuth();
   const navigate = useNavigate();
 
   /* ── Password change state ── */
@@ -100,12 +99,9 @@ export default function Settings() {
     setPwStatus('loading');
     setPwMsg('');
     try {
-      const res = await fetch(`${API_BASE}/auth/change-password`, {
+      const res = await apiFetch('/auth/change-password', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           current_password: pwForm.current_password,
           new_password: pwForm.new_password,
@@ -131,10 +127,7 @@ export default function Settings() {
     setRegenStatus('loading');
     setRegenError('');
     try {
-      const res = await fetch(`${API_BASE}/auth/regenerate-api-key`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/auth/regenerate-api-key', { method: 'POST' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || 'Failed to regenerate API key');
@@ -161,10 +154,7 @@ export default function Settings() {
     setDeleteStep('deleting');
     setDeleteError('');
     try {
-      const res = await fetch(`${API_BASE}/auth/me`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/auth/me', { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || 'Account deletion failed');

@@ -11,3 +11,4 @@ passlib[bcrypt]
 python-multipart
 pywin32
 requests
+alembic

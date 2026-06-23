@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import './Dashboard.css';
 
-const API_BASE = 'http://127.0.0.1:8000';
 
 /* ── Network alert classification ───────────────────────────────────── */
 const NETWORK_ALERT_TYPES = new Set(['port_scan', 'suspicious_port', 'connection_volume', 'syn_flood', 'dns_tunneling']);
@@ -130,6 +129,7 @@ function Toast({ toasts, onDismiss }) {
 
 /* ── Blocked IPs Panel ──────────────────────────────────────────────── */
 function BlockedIPsPanel({ token }) {
+  const { apiFetch } = useAuth();
   const [blocks, setBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -139,9 +139,7 @@ function BlockedIPsPanel({ token }) {
     if (!token) return;
     try {
       setError('');
-      const res = await fetch(`${API_BASE}/blocked-ips`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/blocked-ips');
       if (!res.ok) throw new Error('Failed to fetch blocked IPs');
       const data = await res.json();
       setBlocks(Array.isArray(data) ? data : []);
@@ -150,7 +148,7 @@ function BlockedIPsPanel({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, apiFetch]);
 
   useEffect(() => {
     fetchBlocks();
@@ -159,10 +157,7 @@ function BlockedIPsPanel({ token }) {
   const handleUnblock = async (blockId) => {
     setUnblocking(blockId);
     try {
-      const res = await fetch(`${API_BASE}/blocked-ips/${blockId}/unblock`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/blocked-ips/${blockId}/unblock`, { method: 'POST' });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.detail || 'Unblock failed');
@@ -298,6 +293,7 @@ function BlockedIPsPanel({ token }) {
 
 /* ── Alert Detail Panel ─────────────────────────────────────────────── */
 function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResult }) {
+  const { apiFetch } = useAuth();
   const [alert, setAlert] = useState(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -307,9 +303,7 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
   const fetchDetail = useCallback(async () => {
     if (!alertId) return;
     try {
-      const res = await fetch(`${API_BASE}/alerts/${alertId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/alerts/${alertId}`);
       if (!res.ok) throw new Error('Failed to fetch alert detail');
       const data = await res.json();
       setAlert(data);
@@ -318,7 +312,7 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
     } finally {
       setLoading(false);
     }
-  }, [alertId, token]);
+  }, [alertId, token, apiFetch]);
 
   useEffect(() => {
     setLoading(true);
@@ -330,13 +324,10 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
   const handleStatus = async (newStatus) => {
     setActionLoading(newStatus);
     try {
-      const res = await fetch(`${API_BASE}/alerts/${alertId}/status?new_status=${newStatus}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const res = await apiFetch(
+        `/alerts/${alertId}/status?new_status=${newStatus}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+      );
       if (!res.ok) throw new Error('Status update failed');
       const updated = await res.json();
       setAlert((prev) => ({ ...prev, status: updated.status }));
@@ -356,10 +347,7 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
     setAnalyzing(true);
     setError('');
     try {
-      await fetch(`${API_BASE}/alerts/${alertId}/analyze`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await apiFetch(`/alerts/${alertId}/analyze`, { method: 'POST' });
       await fetchDetail();
     } catch (err) {
       setError('Analysis failed');
@@ -540,7 +528,7 @@ function AlertDetailPanel({ alertId, token, onClose, onStatusChange, onBlockResu
 let toastCounter = 0;
 
 export default function Dashboard() {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, apiFetch } = useAuth();
   const [alerts, setAlerts] = useState([]);
   const [fetchError, setFetchError] = useState('');
   const [selectedId, setSelectedId] = useState(null);
@@ -597,9 +585,7 @@ export default function Dashboard() {
   const fetchAlerts = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/alerts`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/alerts');
       if (!res.ok) throw new Error('Failed to fetch alerts');
       const data = await res.json();
       setAlerts(Array.isArray(data) ? data : data.alerts || []);
@@ -607,19 +593,16 @@ export default function Dashboard() {
     } catch (err) {
       setFetchError(err.message);
     }
-  }, [token]);
+  }, [token, apiFetch]);
 
   const seedDemoData = async () => {
     if (!token || seedStatus === 'loading') return;
     setSeedStatus('loading');
     setSeedResult(null);
     try {
-      const res = await fetch(`${API_BASE}/demo/seed`, {
+      const res = await apiFetch('/demo/seed', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ include_attack: true }),
       });
       if (!res.ok) {
@@ -649,10 +632,7 @@ export default function Dashboard() {
     setClearStatus('clearing');
     setSelectedId(null);
     try {
-      const res = await fetch(`${API_BASE}/alerts`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/alerts', { method: 'DELETE' });
       if (!res.ok) throw new Error('Clear failed');
       const data = await res.json();
       pushToast({

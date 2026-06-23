@@ -62,6 +62,7 @@ class Alert(Base):
     severity = Column(String, default="unknown")  # low/medium/high/critical
     status = Column(String, default="open")  # open/dismissed/approved
     details = Column(Text, nullable=True)  # JSON string with extra context (e.g. matched log ids)
+    
 
     owner = relationship("User")
     report = relationship("AnalystReport", back_populates="alert", uselist=False)

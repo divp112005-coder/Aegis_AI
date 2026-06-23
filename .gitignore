@@ -4,6 +4,7 @@ backend/__pycache__/
 backend/*.pyc
 backend/.env
 agent/.venv
+fix_db.py
 
 # Node
 frontend/node_modules/

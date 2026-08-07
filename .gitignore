@@ -24,3 +24,5 @@ Thumbs.db
 *.swp
 
 start_aegis.bat
+__pycache__/
+*.pyc
